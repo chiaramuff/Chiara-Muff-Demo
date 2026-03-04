@@ -5,7 +5,7 @@ st.title("PH-Wert Rechner")
 
 st.write("Diese Seite ist eine Unterseite der Startseite.")
 
-st.header("🧪 pH-Wert Rechner")
+st.header("pH-Wert Rechner")
 st.write("Gib die $H_3O^+$ Konzentration ein, um den pH-Wert zu bestimmen.")
 
 # Formular wie in der Aufgabe gefordert
