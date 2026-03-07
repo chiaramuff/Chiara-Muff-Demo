@@ -32,3 +32,20 @@ if submitted:
         st.error("Bitte gib einen Wert größer als 0 ein.")
 
     st.write(res)
+
+    if submitted:
+        res = calculate_ph(c)
+        
+        if res is not None:
+            # Das Ergebnis groß anzeigen
+            st.metric("Berechneter pH-Wert", f"{res:.2f}")
+
+            # Farbauswahl basierend auf dem Wert
+            if res < 7:
+                st.error(f"pH {res:.2f}: Die Lösung ist SAUER 🍋")
+            elif res > 7:
+                st.info(f"pH {res:.2f}: Die Lösung ist BASISCH 🧼")
+            else:
+                st.success(f"pH {res:.2f}: Die Lösung ist NEUTRAL 💧")
+        else:
+            st.error("Bitte gib einen gültigen Konzentrationswert ein!")
