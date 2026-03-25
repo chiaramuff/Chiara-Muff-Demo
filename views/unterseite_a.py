@@ -62,4 +62,16 @@ if submitted:
         
 # display the data frame in a table
 st.dataframe(st.session_state['data_df'])
-    
+
+# 1. Daten bereinigen: Nur Zeilen behalten, die wirklich Zahlen in 'h3o_concentration' haben
+chart_data = st.session_state['data_df'].copy()
+chart_data['h3o_concentration'] = pd.to_numeric(chart_data['h3o_concentration'], errors='coerce')
+chart_data = chart_data.dropna(subset=['h3o_concentration'])
+
+# 2. Grafik anzeigen
+if not chart_data.empty:
+    st.markdown("### 📈 Verlauf der pH-Werte")
+    # Wir plotten den pH-Wert über die Zeit
+    st.line_chart(data=chart_data, x='timestamp', y='h3o_concentration')
+else:
+    st.info("Noch keine validen Daten für die Grafik verfügbar.")  
