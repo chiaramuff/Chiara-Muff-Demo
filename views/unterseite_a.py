@@ -1,6 +1,4 @@
-from turtle import pd
-from unittest import result
-from unittest import result
+import pandas as pd
 
 import streamlit as st
 from functions.ph_calculator import calculate_ph
@@ -25,41 +23,43 @@ if submitted:
     res = calculate_ph(c)
     
     if res is not None:
-        st.success(f"Der berechnete pH-Wert ist: *{res:.2f}*")
+        st.success(f"Der berechnete pH-Wert ist: *{res["h3o_concentration"]:.2f}*")
         
-        if res < 7:
+        if res["h3o_concentration"] < 7:
             st.warning("Bereich: *Sauer* (z.B. Zitronensaft)")
-        elif res > 7:
+        elif res["h3o_concentration"] > 7:
             st.info("Bereich: *Basisch* (z.B. Seifenlauge)")
         else:
             st.success("Bereich: *Neutral* (reines Wasser)")
     else:
             st.error("Bitte gib einen Wert größer als 0 ein.")
 
-    st.write(res)
+    st.write(res["h3o_concentration"])
 
     if submitted:
         res = calculate_ph(c)
         
         if res is not None:
             # Das Ergebnis groß anzeigen
-            st.metric("Berechneter pH-Wert", f"{res:.2f}")
+            st.metric("Berechneter pH-Wert", f"{res["h3o_concentration"]:.2f}")
 
             # Farbauswahl basierend auf dem Wert
-            if res < 7:
-                st.error(f"pH {res:.2f}: Die Lösung ist SAUER 🍋")
-            elif res > 7:
-                st.info(f"pH {res:.2f}: Die Lösung ist BASISCH 🧼")
+            if res["h3o_concentration"] < 7:
+                st.error(f"pH {res["h3o_concentration"]:.2f}: Die Lösung ist SAUER 🍋")
+            elif res["h3o_concentration"] > 7:
+                st.info(f"pH {res["h3o_concentration"]:.2f}: Die Lösung ist BASISCH 🧼")
             else:
-                st.success(f"pH {res:.2f}: Die Lösung ist NEUTRAL 💧")
+                st.success(f"pH {res["h3o_concentration"]:.2f}: Die Lösung ist NEUTRAL 💧")
         else:
             st.error("Bitte gib einen gültigen Konzentrationswert ein!")
-            st.session_state['data_df'] = pd.concat([st.session_state['data_df'], pd.DataFrame([result])])
-             # --- CODE UPDATE: save data to data manager ---
-            data_manager = DataManager()
-            data_manager.save_user_data(st.session_state['data_df'], 'data.csv')
+        
+    st.session_state['data_df'] = pd.concat([st.session_state['data_df'], pd.DataFrame([res])])
+
+    # --- CODE UPDATE: save data to data manager ---
+    data_manager = DataManager()
+    data_manager.save_user_data(st.session_state['data_df'], 'data.csv')
     # --- END OF CODE UPDATE ---
         
 # display the data frame in a table
-            st.dataframe(st.session_state['data_df'])
+st.dataframe(st.session_state['data_df'])
     
