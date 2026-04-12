@@ -9,7 +9,7 @@ Auf der Home-Seite klickt er auf Mahlzeit eintragen und wird direkt weitergeleit
 Aus dem Dropdown-Menü wählt er seine Mahlzeit aus und gibt die Uhrzeit ein. 
 Er kreuzt an ob er Symptome hat und wenn ja, welche.
 Bei Bemerkungen gibt er nichts an.
-Er klickt auf  und wird auf seine Werte-Übersicht geführt.
+Er klickt auf den Pfeil und wird auf seine Werte-Übersicht geführt.
 
 Er schaut sich kurz an, ob die neue Mahlzeit eingetragen wurde und geht via Pfeil weiter.
 Er wird auf die «Gut zu wissen» -Seite weitergeleitet.
