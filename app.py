@@ -1,31 +1,98 @@
 import streamlit as st
-import pandas as pd 
-import streamlit as st
+import pandas as pd
+from datetime import datetime
 
-# --- NEW CODE: import and initialize data manager and login manager ---
-from utils.data_manager import DataManager
-from utils.login_manager import LoginManager
+# Konfiguration: Clean & Professionell
+st.set_page_config(page_title="Allergie-Tracker", layout="centered")
 
-data_manager = DataManager(       # initialize data manager
-    fs_protocol='webdav',         # protocol for the filesystem, use webdav for switch drive
-    fs_root_folder="pH-Rechner"  # folder on switch drive where the data is stored
-    ) 
-login_manager = LoginManager(data_manager) # handles user login and registration
-login_manager.login_register()             # stops if not logged in
-# --- END OF NEW CODE ---
-
-# --- CODE UPDATE: load user data from data manager if not already present in session state --
-if 'data_df' not in st.session_state:
-    st.session_state['data_df'] = data_manager.load_user_data(
-        'data.csv',                     # The file on switch drive where the data is stored
-        initial_value=pd.DataFrame(),   # Initial value if the file does not exist
-        parse_dates=['timestamp']       # Parse timestamp as datetime
+# Datenstruktur und Nutzername initialisieren
+if 'tracker_data' not in st.session_state:
+    st.session_state.tracker_data = pd.DataFrame(
+        columns=["Datum", "Uhrzeit", "Mahlzeit", "Symptome", "Intensität", "Bemerkungen"]
     )
-st.set_page_config(page_title="Meine App", page_icon=":material/home:")
 
-pg_home = st.Page("views/home.py", title="Home", icon=":material/home:", default=True)
-pg_second = st.Page("views/unterseite_a.py", title="Unterseite A", icon=":material/info:")
+if 'user_name' not in st.session_state:
+    st.session_state.user_name = ""
 
-pg = st.navigation([pg_home, pg_second])
-pg.run()
+# Login-Bereich (falls noch kein Name vergeben wurde)
+if not st.session_state.user_name:
+    st.title("Willkommen beim Allergie-Tracker")
+    name_input = st.text_input("Bitte gib deinen Namen ein, um zu starten:")
+    if st.button("Starten"):
+        if name_input:
+            st.session_state.user_name = name_input
+            st.rerun()
+        else:
+            st.warning("Bitte gib einen Namen ein.")
+else:
+    # Hauptanwendung, wenn Name bekannt ist
+    st.title(f"Allergie-Tracker")
+    st.write(f"Hallo *{st.session_state.user_name}*, heute ist der {datetime.now().strftime('%d.%m.%Y')}.")
 
+    # Navigation mittels Tabs
+    tab1, tab2, tab3 = st.tabs(["Mahlzeit tracken", "Übersicht", "Wissen"])
+
+    with tab1:
+        st.header("Mahlzeit & Symptome erfassen")
+        
+        with st.form("entry_form", clear_on_submit=True):
+            col1, col2 = st.columns(2)
+            with col1:
+                date = st.date_input("Datum", datetime.now())
+                meal = st.text_input("Was hast du gegessen?", placeholder="z.B. Dinkelbrot")
+            with col2:
+                time = st.time_input("Uhrzeit", datetime.now())
+            
+            has_symptoms = st.radio("Symptome vorhanden?", ["Nein", "Ja"], horizontal=True)
+            
+            intensity = 0
+            symptom_list = []
+            if has_symptoms == "Ja":
+                intensity = st.select_slider("Intensität (1-10)", options=range(1, 11), value=5)
+                symptom_list = st.multiselect(
+                    "Art der Symptome", 
+                    ["Magenbeschwerden", "Hautausschlag", "Atembeschwerden", "Kopfschmerzen"]
+                )
+            
+            notes = st.text_area("Bemerkungen (Zutaten oder spezielle Beschwerden)")
+            
+            submit = st.form_submit_button("Eintrag speichern")
+            
+            if submit:
+                new_row = {
+                    "Datum": date.strftime('%Y-%m-%d'),
+                    "Uhrzeit": time.strftime('%H:%M'),
+                    "Mahlzeit": meal,
+                    "Symptome": ", ".join(symptom_list) if symptom_list else "Keine",
+                    "Intensität": intensity,
+                    "Bemerkungen": notes
+                }
+                st.session_state.tracker_data = pd.concat(
+                    [st.session_state.tracker_data, pd.DataFrame([new_row])], 
+                    ignore_index=True
+                )
+                st.success("Eintrag erfolgreich gespeichert!")
+
+    with tab2:
+        st.header(f"Werte-Übersicht für {st.session_state.user_name}")
+        if not st.session_state.tracker_data.empty:
+            st.dataframe(st.session_state.tracker_data, use_container_width=True)
+            
+            # Export-Funktion
+            csv = st.session_state.tracker_data.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="Daten für den Arzt exportieren (CSV)",
+                data=csv,
+                file_name=f"allergie_report_{st.session_state.user_name}.csv",
+                mime="text/csv"
+            )
+            
+            if st.button("Logout / Name ändern"):
+                st.session_state.user_name = ""
+                st.rerun()
+        else:
+            st.info("Noch keine Daten vorhanden.")
+
+    with tab3:
+        st.header("Gut zu wissen")
+        st.info("Hier entstehen in Kürze Informationen zu Allergenen (Roadmap V1.2).")
