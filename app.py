@@ -3,7 +3,7 @@ import pandas as pd
 import os
 from datetime import datetime
 
-# --- 1. KONFIGURATION & DATENSPEICHERUNG ---
+# --- 1. KONFIGURATION ---
 st.set_page_config(page_title="Allergie-Tracker", layout="centered")
 
 USER_DB = "users.csv"
@@ -22,7 +22,6 @@ def save_user(username, password):
     users.to_csv(USER_DB, index=False)
     return True
 
-# Session State für Login und Daten initialisieren
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'tracker_data' not in st.session_state:
@@ -30,11 +29,10 @@ if 'tracker_data' not in st.session_state:
         columns=["Datum", "Uhrzeit", "Mahlzeit", "Symptome", "Intensität", "Bemerkungen"]
     )
 
-# --- 2. LOGIN / REGISTRIERUNG (Wireframe Seite 1) ---
+# --- 2. LOGIN / REGISTRIERUNG ---
 if not st.session_state.logged_in:
     st.title("Willkommen beim Allergie-Tracker")
     auth_mode = st.radio("Aktion wählen:", ["Login", "Registrieren"], horizontal=True)
-    
     username = st.text_input("Benutzername")
     password = st.text_input("Passwort", type="password")
 
@@ -42,11 +40,9 @@ if not st.session_state.logged_in:
         if st.button("Konto erstellen"):
             if username and password:
                 if save_user(username, password):
-                    st.success("Konto erstellt! Du kannst dich jetzt einloggen.")
+                    st.success("Konto erstellt! Bitte jetzt einloggen.")
                 else:
                     st.error("Benutzername existiert bereits.")
-            else:
-                st.warning("Bitte fülle alle Felder aus.")
     else:
         if st.button("Einloggen"):
             users = load_users()
@@ -55,93 +51,81 @@ if not st.session_state.logged_in:
                 st.session_state.user_name = username
                 st.rerun()
             else:
-                st.error("Falscher Benutzername oder Passwort.")
+                st.error("Falsche Logindaten.")
     st.stop()
 
-# --- 3. HAUPTAPP (Nach erfolgreichem Login) ---
+# --- 3. HAUPTAPP ---
 st.title("Allergie-Tracker")
-st.write(f"Eingeloggt als: **{st.session_state.user_name}** | Heute ist der {datetime.now().strftime('%d.%m.%Y')}")
+st.write(f"Hallo **{st.session_state.user_name}** | {datetime.now().strftime('%d.%m.%Y')}")
 
 tab1, tab2, tab3 = st.tabs(["Mahlzeit tracken", "Übersicht", "Wissen"])
 
-# TAB 1: TRACKING (Wireframe Seite 2 & Nutzertest-Optimierung)
 with tab1:
-    st.header("Mahlzeit & Symptome erfassen")
-    with st.form("entry_form", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        with col1:
-            date = st.date_input("Datum", datetime.now())
-            meal = st.text_input("Was hast du gegessen?", placeholder="z.B. Pasta Carbonara")
-        with col2:
-            time = st.time_input("Uhrzeit", datetime.now())
-        
-        # Trigger für dynamische Felder
-        has_symptoms = st.radio("Symptome vorhanden?", ["Nein", "Ja"], horizontal=True)
-        
-        intensity = 0
-        symptom_list = []
-        
-        # DYNAMISCHE FELDER: Erscheinen sofort innerhalb des Formulars
-        if has_symptoms == "Ja":
-            symptom_options = [
-                "Blähungen", "Bauchschmerzen", "Magenkrämpfe", "Übelkeit", "Sodbrennen", 
-                "Durchfall", "Verstopfung", "Hautausschlag", "Rötung", "Juckreiz", 
-                "Quaddeln", "Atemnot", "Husten", "Schnupfen", "Kopfschmerzen", 
-                "Schwindel", "Müdigkeit", "Herzrasen", "Schwellungen"
-            ]
-            symptom_list = st.multiselect(
-                "Welche Symptome treten auf?", 
-                options=sorted(symptom_options),
-                help="Wähle alle Beschwerden aus, die du spürst."
-            )
-            intensity = st.select_slider(
-                "Intensität der Beschwerden (1-10)", 
-                options=range(1, 11), 
-                value=5
-            )
-        
-        notes = st.text_area("Bemerkungen / Inhaltsstoffe (z.B. enthält Laktose)")
+    st.header("Mahlzeit erfassen")
+    
+    # 1. Diese Felder stehen oben (außerhalb des Forms für sofortige Reaktion)
+    col1, col2 = st.columns(2)
+    with col1:
+        date_val = st.date_input("Datum", datetime.now())
+        meal_val = st.text_input("Was hast du gegessen?", placeholder="z.B. Käse-Omelett")
+    with col2:
+        time_val = st.time_input("Uhrzeit", datetime.now())
+    
+    # DER TRIGGER: Steht außerhalb des Forms, damit die App sofort neu lädt
+    has_symptoms = st.radio("Traten Symptome auf?", ["Nein", "Ja"], horizontal=True)
+    
+    # Initialisierung
+    symptom_list = []
+    intensity = 0
+    
+    # DYNAMISCHE FELDER: Erscheinen SOFORT bei Klick auf "Ja"
+    if has_symptoms == "Ja":
+        st.info("Bitte gib die Details zu deinen Symptomen an:")
+        symptom_options = [
+            "Blähungen", "Bauchschmerzen", "Magenkrämpfe", "Übelkeit", "Sodbrennen", 
+            "Durchfall", "Verstopfung", "Hautausschlag", "Rötung", "Juckreiz", 
+            "Quaddeln", "Atemnot", "Husten", "Schnupfen", "Kopfschmerzen", 
+            "Schwindel", "Müdigkeit", "Herzrasen", "Schwellungen"
+        ]
+        symptom_list = st.multiselect("Welche Symptome?", options=sorted(symptom_options))
+        intensity = st.select_slider("Intensität (1-10)", options=range(1, 11), value=5)
+
+    # 2. Das Formular dient jetzt nur noch als "Speicher-Container"
+    with st.form("save_form"):
+        notes_val = st.text_area("Bemerkungen / Zutaten")
         submit = st.form_submit_button("Eintrag speichern")
         
         if submit:
-            new_row = {
-                "Datum": date.strftime('%Y-%m-%d'),
-                "Uhrzeit": time.strftime('%H:%M'),
-                "Mahlzeit": meal,
-                "Symptome": ", ".join(symptom_list) if symptom_list else "Keine",
-                "Intensität": intensity,
-                "Bemerkungen": notes
-            }
-            st.session_state.tracker_data = pd.concat(
-                [st.session_state.tracker_data, pd.DataFrame([new_row])], 
-                ignore_index=True
-            )
-            st.success("Eintrag erfolgreich in der Übersicht gespeichert!")
+            if meal_val: # Validierung: Theo will keine leeren Daten
+                new_row = {
+                    "Datum": date_val.strftime('%Y-%m-%d'),
+                    "Uhrzeit": time_val.strftime('%H:%M'),
+                    "Mahlzeit": meal_val,
+                    "Symptome": ", ".join(symptom_list) if symptom_list else "Keine",
+                    "Intensität": intensity,
+                    "Bemerkungen": notes_val
+                }
+                st.session_state.tracker_data = pd.concat(
+                    [st.session_state.tracker_data, pd.DataFrame([new_row])], 
+                    ignore_index=True
+                )
+                st.success("Erfolgreich gespeichert!")
+                st.balloons() # Kleines visuelles Feedback
+            else:
+                st.error("Bitte gib an, was du gegessen hast.")
 
-# TAB 2: ÜBERSICHT (Wireframe Seite 3)
 with tab2:
-    st.header(f"Datenhistorie von {st.session_state.user_name}")
+    st.header("Deine Historie")
     if not st.session_state.tracker_data.empty:
-        # Anzeige der Rohdaten für Theo
         st.dataframe(st.session_state.tracker_data, use_container_width=True)
-        
-        # Export-Funktion für den Arzt (Roadmap Ziel)
         csv = st.session_state.tracker_data.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="Bericht für Arzt erstellen (CSV)",
-            data=csv,
-            file_name=f"allergie_export_{st.session_state.user_name}.csv",
-            mime="text/csv"
-        )
+        st.download_button("Als CSV exportieren", data=csv, file_name="export.csv", mime="text/csv")
     else:
-        st.info("Noch keine Daten vorhanden. Nutze den Tab 'Mahlzeit tracken'.")
+        st.info("Noch keine Daten vorhanden.")
 
-# TAB 3: WISSEN & LOGOUT (Wireframe Seite 4)
 with tab3:
-    st.header("Gut zu wissen")
-    st.info("Diese Sektion wird in Version 1.2 der Roadmap mit Allergen-Informationen gefüllt.")
-    
-    st.divider()
-    if st.button("Abmelden"):
+    st.header("Wissen")
+    st.info("Informationen zu Allergenen folgen in V1.2.")
+    if st.button("Logout"):
         st.session_state.logged_in = False
         st.rerun()
