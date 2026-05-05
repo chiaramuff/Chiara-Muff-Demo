@@ -6,12 +6,12 @@ from datetime import datetime
 from fpdf import FPDF
 
 # --- 1. KONFIGURATION & DATENBANK-PFADE ---
-st.set_page_config(page_title="Allergie-Tracker", layout="centered")
+st.set_page_config(page_title="Allergie-Tracker Pro", layout="centered")
 
 USER_DB = "users.csv"
 DATA_DB = "allergie_daten.csv"
 
-# --- 2. FUNKTIONEN FÜR PERSISTENZ (DATEI-SYSTEM) ---
+# --- 2. FUNKTIONEN FÜR PERSISTENZ ---
 
 def load_users():
     if os.path.exists(USER_DB):
@@ -40,7 +40,7 @@ def save_to_csv(new_row_dict):
     else:
         df_new.to_csv(DATA_DB, mode='a', header=False, index=False)
 
-# --- 3. SESSION STATE INITIALISIERUNG ---
+# --- 3. SESSION STATE ---
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'nav_index' not in st.session_state:
@@ -74,7 +74,7 @@ if not st.session_state.logged_in:
                 st.error("Falsche Logindaten.")
     st.stop()
 
-# --- 5. NAVIGATION (Sidebar) ---
+# --- 5. NAVIGATION ---
 with st.sidebar:
     st.title("Menü")
     options = ["Home", "Mahlzeit tracken", "Übersicht & Grafik", "Gut zu wissen"]
@@ -118,15 +118,15 @@ elif page == "Mahlzeit tracken":
     col1, col2 = st.columns(2)
     with col1:
         d_val = st.date_input("Datum", datetime.now())
-        m_val = st.text_input("Speise", placeholder="Was hast du gegessen?")
+        m_val = st.text_input("Speise", placeholder="Z.B. Pizza, Apfel, Omelett...")
     with col2:
         t_val = st.time_input("Uhrzeit", datetime.now())
-        st.text_input("Dauer", placeholder="optional")
+        st.text_input("Dauer der Beschwerden", placeholder="optional")
     
     has_sym = st.radio("Symptome?", ["Nein", "Ja"], horizontal=True)
     s_list, intens = [], 0
     if has_sym == "Ja":
-        s_list = st.multiselect("Symptome", ["Magenbeschwerden", "Hautausschlag", "Atembeschwerden", "Blähungen", "Übelkeit", "Sodbrennen", "Durchfall", "Kopfschmerzen", "Juckreiz"])
+        s_list = st.multiselect("Symptome", ["Magenbeschwerden", "Hautausschlag", "Atembeschwerden", "Blähungen", "Übelkeit", "Sodbrennen", "Durchfall", "Kopfschmerzen", "Juckreiz", "Schwellungen"])
         intens = st.select_slider("Intensität (1-10)", options=range(1, 11), value=5)
 
     with st.form("save_form"):
@@ -176,52 +176,122 @@ elif page == "Übersicht & Grafik":
         df_p = df_p.sort_values('Datum')
         st.subheader("Intensitäts-Trend")
         st.plotly_chart(px.area(df_p, x="Datum", y="Intensität", line_shape="spline", color_discrete_sequence=['#FF4B4B']), use_container_width=True)
-        st.subheader("Top Auslöser")
-        trig = df_p[df_p["Symptome"] != "Keine"]
-        if not trig.empty:
-            st.plotly_chart(px.bar(trig["Mahlzeit"].value_counts().reset_index(), x='count', y='Mahlzeit', orientation='h', color='count', color_continuous_scale='Reds'), use_container_width=True)
     else:
         st.info("Noch keine Daten vorhanden.")
 
-# --- GUT ZU WISSEN (VOLLSTÄNDIG) ---
+# --- GUT ZU WISSEN ---
 elif page == "Gut zu wissen":
     st.title("Gut zu wissen")
     st.session_state.tracker_data = load_tracker_data(st.session_state.user_name)
     
-    st.subheader("Informationsportal Allergene")
+    if st.button("🏠 Zurück zur Startseite", use_container_width=True):
+        st.session_state.nav_index = 0
+        st.rerun()
+    st.divider()
+
+    # ERWEITERTE DATENBANK MIT BESCHWERDEN
     a_info = {
-        "Gluten": {"Symptome": "Bauchschmerzen, Blähungen, Müdigkeit.", "Quellen": "Saucen, Bier, Fertiggerichte, Teigwaren.", "Tipp": "Achte auf das Symbol mit der durchgestrichenen Ähre.", "Keywords": ["Brot", "Nudeln", "Pizza", "Gebäck", "Weizen", "Mehl"]},
-        "Laktose": {"Symptome": "Blähungen, Krämpfe, Übelkeit.", "Quellen": "Wurstwaren, Backwaren, Fertiggerichte.", "Tipp": "Laktase-Tabletten können unterwegs helfen.", "Keywords": ["Milch", "Käse", "Sahne", "Quark", "Joghurt", "Eis"]},
-        "Histamin": {"Symptome": "Migräne, Hautrötungen, Herzrasen.", "Quellen": "Rotwein, Salami, reifer Käse, Tomaten.", "Tipp": "Frische Lebensmittel enthalten weniger Histamin.", "Keywords": ["Wein", "Käse", "Salami", "Tomaten", "Sauerkraut", "Bier"]},
-        "Nüsse": {"Symptome": "Juckreiz, Schwellungen, Atemnot.", "Quellen": "Pesto, Schokolade, asiatische Saucen.", "Tipp": "Trage immer dein Notfallset bei dir.", "Keywords": ["Nuss", "Erdnuss", "Mandel", "Pesto", "Haselnuss"]}
+        "Gluten": {
+            "Info": "Protein in Weizen, Roggen, Gerste.",
+            "Beschwerden": "Bauchschmerzen, Blähungen, Durchfall, Müdigkeit, Hautprobleme.",
+            "Quellen": "Brot, Pasta, Bier, Pizza, Gebäck, Paniermehl.",
+            "Keywords": ["Brot", "Nudeln", "Pizza", "Gebäck", "Weizen", "Mehl", "Pasta", "Semmel", "Brötchen"]
+        },
+        "Laktose": {
+            "Info": "Milchzucker-Unverträglichkeit.",
+            "Beschwerden": "Blähungen, krampfartige Bauchschmerzen, Übelkeit, Durchfall.",
+            "Quellen": "Milch, Sahne, Käse, Eis, Joghurt, Milchpulver.",
+            "Keywords": ["Milch", "Käse", "Sahne", "Quark", "Joghurt", "Eis", "Butter", "Latte"]
+        },
+        "Histamin": {
+            "Info": "Abbaustörung von Histamin im Körper.",
+            "Beschwerden": "Kopfschmerzen/Migräne, Hautrötungen, Herzrasen, Magen-Darm-Probleme.",
+            "Quellen": "Rotwein, Salami, reifer Käse, Tomaten, Sauerkraut, Bier.",
+            "Keywords": ["Wein", "Salami", "Tomaten", "Sauerkraut", "Bier", "Essig", "Sekt"]
+        },
+        "Nüsse": {
+            "Info": "Häufige Allergie gegen Schalenfrüchte.",
+            "Beschwerden": "Juckreiz im Mund, Schwellungen, Atemnot, Nesselsucht.",
+            "Quellen": "Müsli, Schokolade, Pesto, Snacks, Backwaren.",
+            "Keywords": ["Nuss", "Erdnuss", "Mandel", "Pesto", "Haselnuss", "Walnuss", "Cashew"]
+        },
+        "Hühnerei": {
+            "Info": "Reaktion auf Proteine im Eigelb oder Eiklar.",
+            "Beschwerden": "Hautausschlag, Übelkeit, Erbrechen, Atembeschwerden.",
+            "Quellen": "Mayonnaise, Panaden, Kuchen, Omelett, Saucen.",
+            "Keywords": ["Ei", "Eier", "Omelett", "Mayonnaise", "Kuchen", "Panade"]
+        },
+        "Fruktose": {
+            "Info": "Fruchtzucker-Malabsorption.",
+            "Beschwerden": "Blähungen, Bauchschmerzen, weicher Stuhlgang, Übelkeit.",
+            "Quellen": "Kernobst (Apfel/Birne), Säfte, Honig, Trockenobst.",
+            "Keywords": ["Apfel", "Birne", "Saft", "Honig", "Datteln", "Pfirsich", "Nektarine"]
+        },
+        "Soja": {
+            "Info": "Pflanzliches Eiweiß aus der Sojabohne.",
+            "Beschwerden": "Juckreiz, Schwellungen, Magen-Darm-Beschwerden, Atembeschwerden.",
+            "Quellen": "Tofu, Sojasauce, Fleischersatzprodukte, Margarine.",
+            "Keywords": ["Soja", "Tofu", "Sojasauce", "Edamame", "Sojamilch"]
+        },
+        "Fisch": {
+            "Info": "Allergie gegen Fischeiweiß (Parvalbumin).",
+            "Beschwerden": "Hautrötungen, Übelkeit, Erbrechen, schwere allergische Reaktionen.",
+            "Quellen": "Sushi, Fischstäbchen, Fischsaucen, Surimi.",
+            "Keywords": ["Fisch", "Lachs", "Thunfisch", "Sushi", "Forelle", "Zander"]
+        }
     }
-    
-    sel = st.selectbox("Allergen wählen:", ["Bitte wählen"] + list(a_info.keys()))
+
+    # Lexikon Auswahl
+    st.subheader("Allergen-Lexikon & Abgleich")
+    sel = st.selectbox("Wähle ein Allergen für Details:", ["Bitte wählen"] + list(a_info.keys()))
     
     if sel != "Bitte wählen":
-        # Anzeige der Infos
         info = a_info[sel]
-        c1, c2 = st.columns(2)
-        with c1: st.warning(f"**Symptome:**\n{info['Symptome']}")
-        with c2: st.info(f"**Versteckte Quellen:**\n{info['Quellen']}")
-        st.success(f"**Profi-Tipp:** {info['Tipp']}")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.markdown(f"**💡 Info:** {info['Info']}")
+            st.markdown(f"**🍔 Quellen:** {info['Quellen']}")
+        with col_b:
+            st.error(f"**⚠️ Häufige Beschwerden:**\n{info['Beschwerden']}")
         
-        # Persönliche Verknüpfung
-        if not st.session_state.tracker_data.empty:
-            kw = info["Keywords"]
-            matches = st.session_state.tracker_data[(st.session_state.tracker_data['Mahlzeit'].str.contains('|'.join(kw), case=False, na=False)) & (st.session_state.tracker_data['Symptome'] != "Keine")]
-            if not matches.empty:
-                st.error(f"⚠️ **Check:** Du hast {len(matches)} Einträge mit Symptomen, die {sel} enthalten könnten:")
-                for i, r in matches.iterrows(): st.write(f"- {r['Mahlzeit']} (Intensität: {r['Intensität']})")
-            else:
-                st.success(f"✅ Bisher keine Symptome bei {sel}-haltigen Speisen bei dir gefunden.")
+        # Abgleich mit eigenen Daten
+        matches = st.session_state.tracker_data[
+            (st.session_state.tracker_data['Mahlzeit'].str.contains('|'.join(info["Keywords"]), case=False, na=False)) & 
+            (st.session_state.tracker_data['Symptome'] != "Keine")
+        ]
+        if not matches.empty:
+            st.warning(f"**Deine Treffer für {sel}:**")
+            for i, r in matches.iterrows():
+                st.write(f"- {r['Mahlzeit']} ({r['Datum']})")
+        else:
+            st.success(f"✅ Bisher keine Übereinstimmungen bei {sel} gefunden.")
 
     st.divider()
-    st.subheader("Deine häufigsten Symptome")
+
+    # Statistik & PDF
+    st.subheader("Deine Top Allergen-Auslöser")
     if not st.session_state.tracker_data.empty:
-        all_s = st.session_state.tracker_data["Symptome"].str.split(", ").explode()
-        all_s = all_s[all_s != "Keine"]
-        if not all_s.empty:
-            st.plotly_chart(px.bar(all_s.value_counts().head(5), orientation='h', color_discrete_sequence=['#FFA500']), use_container_width=True)
-    else: st.info("Trage Daten ein für deine Statistik.")
-    st.caption("⚠️ Diese App dient nur der Information und ersetzt keine Diagnose durch einen Arzt.")
+        counts = {}
+        for allergen, data in a_info.items():
+            cnt = st.session_state.tracker_data[
+                (st.session_state.tracker_data['Mahlzeit'].str.contains('|'.join(data["Keywords"]), case=False, na=False)) & 
+                (st.session_state.tracker_data['Symptome'] != "Keine")
+            ].shape[0]
+            if cnt > 0: counts[allergen] = cnt
+        
+        if counts:
+            df_c = pd.DataFrame(list(counts.items()), columns=['Allergen', 'Anzahl']).sort_values(by='Anzahl', ascending=False)
+            st.plotly_chart(px.bar(df_c, x='Anzahl', y='Allergen', orientation='h', color='Anzahl', color_continuous_scale='Reds'), use_container_width=True)
+            
+            def create_stat_pdf(df):
+                pdf = FPDF()
+                pdf.add_page()
+                pdf.set_font("Arial", "B", 16)
+                pdf.cell(0, 10, f"Allergen-Statistik: {st.session_state.user_name}", ln=True)
+                pdf.set_font("Arial", size=12); pdf.ln(10)
+                pdf.cell(80, 10, "Allergen", 1); pdf.cell(40, 10, "Anzahl", 1); pdf.ln()
+                for _, r in df.iterrows():
+                    pdf.cell(80, 10, str(r['Allergen']), 1); pdf.cell(40, 10, str(r['Anzahl']), 1); pdf.ln()
+                return pdf.output(dest='S').encode('latin-1')
+
+            st.download_button("📄 Auslöser-Statistik als PDF", data=create_stat_pdf(df_c), file_name=f"Top_Ausloeser_{st.session_state.user_name}.pdf", mime="application/pdf", use_container_width=True)
