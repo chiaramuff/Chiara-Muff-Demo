@@ -28,12 +28,10 @@ def save_user(username, password):
     return True
 
 def load_tracker_data(username):
-    # Online-Sicherheit: Falls Datei leer oder korrupt, leeren DF zurückgeben
     cols = ["Nutzer", "Datum", "Uhrzeit", "Mahlzeit", "Symptome", "Intensität", "Bemerkungen"]
     if os.path.exists(DATA_DB):
         try:
             df = pd.read_csv(DATA_DB)
-            # Sicherstellen, dass alle Spalten existieren
             for c in cols:
                 if c not in df.columns:
                     df[c] = ""
@@ -87,7 +85,6 @@ if not st.session_state.logged_in:
 with st.sidebar:
     st.title("Menü")
     options = ["Home", "Mahlzeit tracken", "Übersicht & Grafik", "Gut zu wissen", "Arzt-Modus"]
-    # Der Index wird über den Session State gesteuert
     page = st.radio("Navigation", options, index=st.session_state.nav_index)
     st.session_state.nav_index = options.index(page)
     
@@ -97,20 +94,20 @@ with st.sidebar:
             del st.session_state[key]
         st.rerun()
 
-# --- 6. ALLERGEN DATENBANK ---
+# --- 6. ALLERGEN DATENBANK (FIXED: Alle Einträge haben 'Quellen') ---
 a_info = {
-    "Gluten": {"Info": "Protein in Weizen, Roggen, Gerste.", "Beschwerden": "Bauchschmerzen, Blähungen, Durchfall.", "Quellen": "Brot, Pasta, Bier, Pizza, Gebäck.", "Keywords": ["Brot", "Nudeln", "Pizza", "Gebäck", "Weizen"]},
-    "Laktose": {"Info": "Milchzucker-Unverträglichkeit.", "Beschwerden": "Blähungen, Krämpfe, Durchfall.", "Keywords": ["Milch", "Käse", "Sahne", "Joghurt", "Eis"]},
-    "Histamin": {"Info": "Abbaustörung von Histamin.", "Beschwerden": "Kopfschmerzen, Hautrötungen, Herzrasen.", "Keywords": ["Wein", "Salami", "Tomaten", "Bier", "Essig"]},
-    "Nüsse": {"Info": "Allergie gegen Schalenfrüchte.", "Beschwerden": "Juckreiz, Schwellungen, Atemnot.", "Keywords": ["Nuss", "Erdnuss", "Mandel", "Pesto", "Haselnuss"]},
-    "Hühnerei": {"Info": "Reaktion auf Proteine im Ei.", "Beschwerden": "Hautausschlag, Übelkeit, Atembeschwerden.", "Keywords": ["Ei", "Eier", "Omelett", "Mayonnaise", "Kuchen"]},
-    "Fruktose": {"Info": "Fruchtzucker-Malabsorption.", "Beschwerden": "Blähungen, Bauchschmerzen, Übelkeit.", "Keywords": ["Apfel", "Birne", "Saft", "Honig", "Datteln"]},
-    "Soja": {"Info": "Pflanzliches Eiweiß.", "Beschwerden": "Juckreiz, Magenbeschwerden.", "Keywords": ["Soja", "Tofu", "Sojasauce", "Edamame"]},
-    "Fisch": {"Info": "Allergie gegen Fischeiweiß.", "Beschwerden": "Hautrötungen, Erbrechen.", "Keywords": ["Fisch", "Lachs", "Thunfisch", "Forelle"]},
-    "Sellerie": {"Info": "Häufiges Allergen in Suppen.", "Beschwerden": "Schwellungen, Nesselsucht.", "Keywords": ["Sellerie", "Suppengrün", "Bouillon"]},
-    "Senf": {"Info": "Scharfes Allergen.", "Beschwerden": "Atembeschwerden, Magenprobleme.", "Keywords": ["Senf", "Dressing", "Marinade"]},
-    "Sesam": {"Info": "Backwaren und Öle.", "Beschwerden": "Hautprobleme, Schwellungen.", "Keywords": ["Sesam", "Tahini", "Hummus"]},
-    "Krebstiere": {"Info": "Garnelen, Krabben etc.", "Beschwerden": "Übelkeit, Atembeschwerden.", "Keywords": ["Garnele", "Krabbe", "Hummer", "Meeresfrüchte"]}
+    "Gluten": {"Info": "Protein in Getreide.", "Beschwerden": "Bauchschmerzen, Blähungen.", "Quellen": "Brot, Pasta, Pizza.", "Keywords": ["Brot", "Nudeln", "Pizza", "Weizen"]},
+    "Laktose": {"Info": "Milchzucker-Unverträglichkeit.", "Beschwerden": "Krämpfe, Durchfall.", "Quellen": "Milch, Käse, Joghurt.", "Keywords": ["Milch", "Käse", "Sahne", "Joghurt"]},
+    "Histamin": {"Info": "Abbaustörung von Histamin.", "Beschwerden": "Kopfschmerz, Hautrötung.", "Quellen": "Wein, Salami, Tomaten.", "Keywords": ["Wein", "Salami", "Tomaten", "Essig"]},
+    "Nüsse": {"Info": "Allergie gegen Schalenfrüchte.", "Beschwerden": "Schwellung, Atemnot.", "Quellen": "Müsli, Pesto, Snacks.", "Keywords": ["Nuss", "Erdnuss", "Mandel", "Pesto"]},
+    "Hühnerei": {"Info": "Reaktion auf Ei-Proteine.", "Beschwerden": "Ausschlag, Übelkeit.", "Quellen": "Kuchen, Mayonnaise, Omelett.", "Keywords": ["Ei", "Eier", "Kuchen", "Mayonnaise"]},
+    "Fruktose": {"Info": "Fruchtzucker-Malabsorption.", "Beschwerden": "Blähungen, Übelkeit.", "Quellen": "Obst, Honig, Säfte.", "Keywords": ["Apfel", "Birne", "Saft", "Honig"]},
+    "Soja": {"Info": "Pflanzliches Eiweiß.", "Beschwerden": "Juckreiz, Magenprobleme.", "Quellen": "Tofu, Sojasauce.", "Keywords": ["Soja", "Tofu", "Sojasauce"]},
+    "Fisch": {"Info": "Allergie gegen Fischeiweiß.", "Beschwerden": "Erbrechen, Hautrötung.", "Quellen": "Sushi, Fischstäbchen.", "Keywords": ["Fisch", "Lachs", "Thunfisch"]},
+    "Sellerie": {"Info": "In Suppen/Gewürzen.", "Beschwerden": "Juckreiz, Schwellung.", "Quellen": "Suppen, Fertiggerichte.", "Keywords": ["Sellerie", "Bouillon"]},
+    "Senf": {"Info": "Scharfes Allergen.", "Beschwerden": "Magenprobleme.", "Quellen": "Dressings, Saucen.", "Keywords": ["Senf", "Dressing"]},
+    "Sesam": {"Info": "In Backwaren/Ölen.", "Beschwerden": "Schwellung.", "Quellen": "Hummus, Burgerbrötchen.", "Keywords": ["Sesam", "Hummus"]},
+    "Krebstiere": {"Info": "Garnelen, Krabben.", "Beschwerden": "Übelkeit, Atemnot.", "Quellen": "Meeresfrüchte, Paella.", "Keywords": ["Garnele", "Krabbe", "Scampi"]}
 }
 
 # --- 7. SEITEN-LOGIK ---
@@ -188,9 +185,15 @@ elif page == "Mahlzeit tracken":
 
 elif page == "Übersicht & Grafik":
     st.header("Analyse & Historie")
-    if st.button("🩺 Zum Arzt-Dashboard springen", use_container_width=True):
-        st.session_state.nav_index = 4
-        st.rerun()
+    col_u1, col_u2 = st.columns(2)
+    with col_u1:
+        if st.button("💡 Gut zu wissen", use_container_width=True):
+            st.session_state.nav_index = 3
+            st.rerun()
+    with col_u2:
+        if st.button("🩺 Arzt-Dashboard", use_container_width=True):
+            st.session_state.nav_index = 4
+            st.rerun()
     st.divider()
     st.session_state.tracker_data = load_tracker_data(st.session_state.user_name)
     if not st.session_state.tracker_data.empty:
