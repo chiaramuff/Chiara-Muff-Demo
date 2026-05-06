@@ -7,3 +7,5 @@ fsspec
 matplotlib
 numpy
 pytz
+plotly
+fpdf
