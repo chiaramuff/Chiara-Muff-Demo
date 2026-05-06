@@ -28,10 +28,19 @@ def save_user(username, password):
     return True
 
 def load_tracker_data(username):
+    # Online-Sicherheit: Falls Datei leer oder korrupt, leeren DF zurückgeben
+    cols = ["Nutzer", "Datum", "Uhrzeit", "Mahlzeit", "Symptome", "Intensität", "Bemerkungen"]
     if os.path.exists(DATA_DB):
-        df = pd.read_csv(DATA_DB)
-        return df[df["Nutzer"] == username].copy()
-    return pd.DataFrame(columns=["Nutzer", "Datum", "Uhrzeit", "Mahlzeit", "Symptome", "Intensität", "Bemerkungen"])
+        try:
+            df = pd.read_csv(DATA_DB)
+            # Sicherstellen, dass alle Spalten existieren
+            for c in cols:
+                if c not in df.columns:
+                    df[c] = ""
+            return df[df["Nutzer"] == username].copy()
+        except:
+            return pd.DataFrame(columns=cols)
+    return pd.DataFrame(columns=cols)
 
 def save_to_csv(new_row_dict):
     df_new = pd.DataFrame([new_row_dict])
@@ -65,7 +74,7 @@ if not st.session_state.logged_in:
     else:
         if st.button("Enter"):
             users = load_users()
-            if ((users["username"] == u_in) & (users["password"] == p_in)).any():
+            if not users.empty and ((users["username"] == u_in) & (users["password"] == p_in)).any():
                 st.session_state.logged_in = True
                 st.session_state.user_name = u_in
                 st.session_state.tracker_data = load_tracker_data(u_in)
@@ -78,7 +87,8 @@ if not st.session_state.logged_in:
 with st.sidebar:
     st.title("Menü")
     options = ["Home", "Mahlzeit tracken", "Übersicht & Grafik", "Gut zu wissen", "Arzt-Modus"]
-    page = st.radio("Navigation", options, index=st.session_state.nav_index, key="nav_radio")
+    # Der Index wird über den Session State gesteuert
+    page = st.radio("Navigation", options, index=st.session_state.nav_index)
     st.session_state.nav_index = options.index(page)
     
     st.divider()
@@ -87,80 +97,20 @@ with st.sidebar:
             del st.session_state[key]
         st.rerun()
 
-# --- 6. ERWEITERTE ALLERGEN DATENBANK ---
+# --- 6. ALLERGEN DATENBANK ---
 a_info = {
-    "Gluten": {
-        "Info": "Protein in Weizen, Roggen, Gerste.",
-        "Beschwerden": "Bauchschmerzen, Blähungen, Durchfall, Müdigkeit, Kopfschmerzen.",
-        "Quellen": "Brot, Pasta, Bier, Pizza, Gebäck, Saucen, Paniermehl.",
-        "Keywords": ["Brot", "Nudeln", "Pizza", "Gebäck", "Weizen", "Mehl", "Pasta", "Semmel", "Keks", "Bulgur", "Couscous"]
-    },
-    "Laktose": {
-        "Info": "Milchzucker-Unverträglichkeit.",
-        "Beschwerden": "Blähungen, Krämpfe, Übelkeit, Durchfall, Völlegefühl.",
-        "Quellen": "Milch, Sahne, Käse, Joghurt, Eis, Butter, Milchpulver.",
-        "Keywords": ["Milch", "Käse", "Sahne", "Quark", "Joghurt", "Eis", "Butter", "Latte", "Cappuccino", "Mozzarella"]
-    },
-    "Histamin": {
-        "Info": "Abbaustörung von Histamin im Körper.",
-        "Beschwerden": "Kopfschmerzen/Migräne, Hautrötungen, Herzrasen, Magen-Darm-Probleme.",
-        "Quellen": "Rotwein, Salami, reifer Käse, Tomaten, Sauerkraut, Bier, Fischkonserven.",
-        "Keywords": ["Wein", "Salami", "Tomaten", "Sauerkraut", "Bier", "Essig", "Sekt", "Thunfisch", "Meeresfrüchte"]
-    },
-    "Nüsse": {
-        "Info": "Allergie gegen Schalenfrüchte.",
-        "Beschwerden": "Juckreiz im Mund, Schwellungen, Atemnot, Hautausschlag.",
-        "Quellen": "Müsli, Schokolade, Pesto, Snacks, Backwaren, Öle.",
-        "Keywords": ["Nuss", "Erdnuss", "Mandel", "Pesto", "Haselnuss", "Walnuss", "Cashew", "Pistazie", "Nugat"]
-    },
-    "Hühnerei": {
-        "Info": "Reaktion auf Proteine im Ei.",
-        "Beschwerden": "Hautausschlag, Übelkeit, Erbrechen, Atembeschwerden.",
-        "Quellen": "Mayonnaise, Panaden, Kuchen, Omelett, Saucen, Gebäck.",
-        "Keywords": ["Ei", "Eier", "Omelett", "Mayonnaise", "Kuchen", "Panade", "Pfannkuchen", "Quiche"]
-    },
-    "Fruktose": {
-        "Info": "Fruchtzucker-Malabsorption.",
-        "Beschwerden": "Blähungen, Bauchschmerzen, weicher Stuhlgang, Übelkeit.",
-        "Quellen": "Kernobst (Apfel/Birne), Säfte, Honig, Trockenfrüchte, Ketchup.",
-        "Keywords": ["Apfel", "Birne", "Saft", "Honig", "Datteln", "Pfirsich", "Nektarine", "Mango", "Weintrauben"]
-    },
-    "Soja": {
-        "Info": "Pflanzliches Eiweiß aus der Sojabohne.",
-        "Beschwerden": "Juckreiz, Schwellungen, Magen-Darm-Beschwerden, Atembeschwerden.",
-        "Quellen": "Tofu, Sojasauce, Fleischersatzprodukte, Margarine, Edamame.",
-        "Keywords": ["Soja", "Tofu", "Sojasauce", "Edamame", "Sojamilch", "Miso"]
-    },
-    "Fisch": {
-        "Info": "Allergie gegen Fischeiweiß.",
-        "Beschwerden": "Hautrötungen, Übelkeit, Erbrechen, schwere allergische Reaktionen.",
-        "Quellen": "Sushi, Fischstäbchen, Fischsaucen, Surimi, Suppen.",
-        "Keywords": ["Fisch", "Lachs", "Thunfisch", "Sushi", "Forelle", "Kabeljau", "Dorsch", "Zander"]
-    },
-    "Sellerie": {
-        "Info": "Häufiges Allergen in Suppen und Gewürzen.",
-        "Beschwerden": "Juckreiz, Schwellungen, Nesselsucht, Kreislaufprobleme.",
-        "Quellen": "Suppen, Eintöpfe, Fertigsaucen, Gewürzmischungen, Salate.",
-        "Keywords": ["Sellerie", "Suppengrün", "Brühwürfel", "Eintopf", "Bouillon", "Gewürzmischung"]
-    },
-    "Senf": {
-        "Info": "Scharfes Allergen in Dressings und Fleisch.",
-        "Beschwerden": "Hautrötungen, Atembeschwerden, Magen-Darm-Probleme.",
-        "Quellen": "Senf, Dressings, Marinaden, Wurst, Currywurst.",
-        "Keywords": ["Senf", "Dressing", "Marinade", "Currywurst", "Remoulade", "Wurst"]
-    },
-    "Sesam": {
-        "Info": "Oft in orientalischer Küche und Backwaren.",
-        "Beschwerden": "Hautprobleme, Schwellungen, Atembeschwerden.",
-        "Quellen": "Hummus, Knäckebrot, Sesamöl, Burgerbrötchen, Falafel.",
-        "Keywords": ["Sesam", "Tahini", "Hummus", "Knäckebrot", "Halva", "Falafel"]
-    },
-    "Krebstiere": {
-        "Info": "Allergie gegen Garnelen, Krabben etc.",
-        "Beschwerden": "Schwellungen, Nesselausschlag, Übelkeit, Atembeschwerden.",
-        "Quellen": "Garnelen, Krabben, Hummer, Curry-Pasten, Paella.",
-        "Keywords": ["Garnele", "Krabbe", "Hummer", "Scampi", "Flusskrebs", "Meeresfrüchte", "Paella"]
-    }
+    "Gluten": {"Info": "Protein in Weizen, Roggen, Gerste.", "Beschwerden": "Bauchschmerzen, Blähungen, Durchfall.", "Quellen": "Brot, Pasta, Bier, Pizza, Gebäck.", "Keywords": ["Brot", "Nudeln", "Pizza", "Gebäck", "Weizen"]},
+    "Laktose": {"Info": "Milchzucker-Unverträglichkeit.", "Beschwerden": "Blähungen, Krämpfe, Durchfall.", "Keywords": ["Milch", "Käse", "Sahne", "Joghurt", "Eis"]},
+    "Histamin": {"Info": "Abbaustörung von Histamin.", "Beschwerden": "Kopfschmerzen, Hautrötungen, Herzrasen.", "Keywords": ["Wein", "Salami", "Tomaten", "Bier", "Essig"]},
+    "Nüsse": {"Info": "Allergie gegen Schalenfrüchte.", "Beschwerden": "Juckreiz, Schwellungen, Atemnot.", "Keywords": ["Nuss", "Erdnuss", "Mandel", "Pesto", "Haselnuss"]},
+    "Hühnerei": {"Info": "Reaktion auf Proteine im Ei.", "Beschwerden": "Hautausschlag, Übelkeit, Atembeschwerden.", "Keywords": ["Ei", "Eier", "Omelett", "Mayonnaise", "Kuchen"]},
+    "Fruktose": {"Info": "Fruchtzucker-Malabsorption.", "Beschwerden": "Blähungen, Bauchschmerzen, Übelkeit.", "Keywords": ["Apfel", "Birne", "Saft", "Honig", "Datteln"]},
+    "Soja": {"Info": "Pflanzliches Eiweiß.", "Beschwerden": "Juckreiz, Magenbeschwerden.", "Keywords": ["Soja", "Tofu", "Sojasauce", "Edamame"]},
+    "Fisch": {"Info": "Allergie gegen Fischeiweiß.", "Beschwerden": "Hautrötungen, Erbrechen.", "Keywords": ["Fisch", "Lachs", "Thunfisch", "Forelle"]},
+    "Sellerie": {"Info": "Häufiges Allergen in Suppen.", "Beschwerden": "Schwellungen, Nesselsucht.", "Keywords": ["Sellerie", "Suppengrün", "Bouillon"]},
+    "Senf": {"Info": "Scharfes Allergen.", "Beschwerden": "Atembeschwerden, Magenprobleme.", "Keywords": ["Senf", "Dressing", "Marinade"]},
+    "Sesam": {"Info": "Backwaren und Öle.", "Beschwerden": "Hautprobleme, Schwellungen.", "Keywords": ["Sesam", "Tahini", "Hummus"]},
+    "Krebstiere": {"Info": "Garnelen, Krabben etc.", "Beschwerden": "Übelkeit, Atembeschwerden.", "Keywords": ["Garnele", "Krabbe", "Hummer", "Meeresfrüchte"]}
 }
 
 # --- 7. SEITEN-LOGIK ---
@@ -183,7 +133,7 @@ if page == "Home":
         avg_int = st.session_state.tracker_data["Intensität"].astype(int).mean()
         wellness_score = 11 - avg_int 
         st.write("Dein Wohlbefinden (basierend auf Symptomen):")
-        st.select_slider("Skala", options=range(1, 11), value=int(wellness_score), disabled=True, label_visibility="collapsed")
+        st.select_slider("Skala", options=range(1, 11), value=int(wellness_score), disabled=True)
     else:
         st.info("Noch keine Daten vorhanden.")
 
@@ -195,7 +145,7 @@ elif page == "Mahlzeit tracken":
         m_val = st.text_input("Speise", placeholder="Was hast du gegessen?")
     with col2:
         t_val = st.time_input("Uhrzeit", datetime.now())
-        st.text_input("Dauer der Beschwerden", placeholder="optional")
+        dur_val = st.text_input("Dauer der Beschwerden", placeholder="optional")
     
     has_sym = st.radio("Symptome?", ["Nein", "Ja"], horizontal=True)
     s_list, intens = [], 0
@@ -207,7 +157,15 @@ elif page == "Mahlzeit tracken":
         n_val = st.text_area("Bemerkungen")
         if st.form_submit_button("Eintrag speichern"):
             if m_val:
-                new_e = {"Nutzer": st.session_state.user_name, "Datum": d_val.strftime('%Y-%m-%d'), "Uhrzeit": t_val.strftime('%H:%M'), "Mahlzeit": m_val, "Symptome": ", ".join(s_list) if s_list else "Keine", "Intensität": intens, "Bemerkungen": n_val}
+                new_e = {
+                    "Nutzer": st.session_state.user_name, 
+                    "Datum": d_val.strftime('%Y-%m-%d'), 
+                    "Uhrzeit": t_val.strftime('%H:%M'), 
+                    "Mahlzeit": m_val, 
+                    "Symptome": ", ".join(s_list) if s_list else "Keine", 
+                    "Intensität": intens, 
+                    "Bemerkungen": n_val
+                }
                 save_to_csv(new_e)
                 st.session_state.tracker_data = load_tracker_data(st.session_state.user_name)
                 st.session_state.show_success_nav = True 
@@ -220,10 +178,13 @@ elif page == "Mahlzeit tracken":
         c_n1, c_n2 = st.columns(2)
         with c_n1:
             if st.button("➕ Nächste Mahlzeit", use_container_width=True):
-                st.session_state.show_success_nav = False; st.rerun()
+                st.session_state.show_success_nav = False
+                st.rerun()
         with c_n2:
             if st.button("📊 Zur Übersicht", use_container_width=True):
-                st.session_state.show_success_nav = False; st.session_state.nav_index = 2; st.rerun()
+                st.session_state.show_success_nav = False
+                st.session_state.nav_index = 2
+                st.rerun()
 
 elif page == "Übersicht & Grafik":
     st.header("Analyse & Historie")
@@ -231,24 +192,21 @@ elif page == "Übersicht & Grafik":
         st.session_state.nav_index = 4
         st.rerun()
     st.divider()
-
     st.session_state.tracker_data = load_tracker_data(st.session_state.user_name)
     if not st.session_state.tracker_data.empty:
         st.subheader("Alle Einträge")
         st.dataframe(st.session_state.tracker_data.drop(columns=["Nutzer"]), use_container_width=True)
-        
         df_p = st.session_state.tracker_data.copy()
         df_p['Datum'] = pd.to_datetime(df_p['Datum'])
         df_p = df_p.sort_values('Datum')
         st.subheader("Intensitäts-Trend")
-        st.plotly_chart(px.area(df_p, x="Datum", y="Intensität", line_shape="spline", color_discrete_sequence=['#FF4B4B']), use_container_width=True)
+        st.plotly_chart(px.area(df_p, x="Datum", y="Intensität", line_shape="spline"), use_container_width=True)
     else:
         st.info("Noch keine Daten vorhanden.")
 
 elif page == "Gut zu wissen":
     st.title("Gut zu wissen")
     st.session_state.tracker_data = load_tracker_data(st.session_state.user_name)
-    
     col_g1, col_g2 = st.columns(2)
     with col_g1:
         if st.button("🏠 Zur Startseite", use_container_width=True):
@@ -259,19 +217,16 @@ elif page == "Gut zu wissen":
             st.session_state.nav_index = 4
             st.rerun()
     st.divider()
-
     st.subheader("Allergen-Lexikon & Check")
     sel = st.selectbox("Wähle ein Allergen für Details:", ["Bitte wählen"] + list(a_info.keys()))
-    
     if sel != "Bitte wählen":
         info = a_info[sel]
-        col_a, col_b = st.columns(2)
-        with col_a:
+        c1, c2 = st.columns(2)
+        with c1:
             st.markdown(f"**💡 Info:** {info['Info']}")
             st.markdown(f"**🍔 Quellen:** {info['Quellen']}")
-        with col_b:
+        with c2:
             st.error(f"**⚠️ Häufige Beschwerden:**\n{info['Beschwerden']}")
-        
         matches = st.session_state.tracker_data[
             (st.session_state.tracker_data['Mahlzeit'].str.contains('|'.join(info["Keywords"]), case=False, na=False)) & 
             (st.session_state.tracker_data['Symptome'] != "Keine")
@@ -282,7 +237,6 @@ elif page == "Gut zu wissen":
                 st.write(f"- **{r['Mahlzeit']}** (am {r['Datum']})")
         else:
             st.success(f"✅ Bisher keine Symptome bei {sel} gefunden.")
-
     st.divider()
     st.subheader("Deine Top Allergen-Auslöser")
     if not st.session_state.tracker_data.empty:
@@ -293,32 +247,25 @@ elif page == "Gut zu wissen":
                 (st.session_state.tracker_data['Symptome'] != "Keine")
             ].shape[0]
             if cnt > 0: counts[allergen] = cnt
-        
         if counts:
             df_c = pd.DataFrame(list(counts.items()), columns=['Allergen', 'Anzahl']).sort_values(by='Anzahl', ascending=False)
-            st.plotly_chart(px.bar(df_c, x='Anzahl', y='Allergen', orientation='h', color='Anzahl', color_continuous_scale='Reds'), use_container_width=True)
+            st.plotly_chart(px.bar(df_c, x='Anzahl', y='Allergen', orientation='h'), use_container_width=True)
 
 elif page == "Arzt-Modus":
     st.title("🩺 Arzt-Dashboard")
     st.write("Bereite deine Daten optimal für den nächsten Arztbesuch vor.")
     st.session_state.tracker_data = load_tracker_data(st.session_state.user_name)
-
     if not st.session_state.tracker_data.empty:
         df = st.session_state.tracker_data.copy()
         avg_int = df["Intensität"].astype(int).mean()
-        
         col_m1, col_m2 = st.columns(2)
         col_m1.metric("Ø Schmerz-Level", f"{avg_int:.1f} / 10")
-        
         sym_check = df[df["Symptome"] != "Keine"]
         if not sym_check.empty:
             top_sym = sym_check["Symptome"].str.split(", ").explode().value_counts().idxmax()
             col_m2.metric("Hauptbeschwerde", top_sym)
-        
         st.divider()
-        st.subheader("Fragen für den Arzt")
-        arzt_notes = st.text_area("Was möchtest du besprechen?", placeholder="Z.B. Treten die Symptome immer nach Brot auf?")
-        
+        arzt_notes = st.text_area("Fragen für den Arzt", placeholder="Z.B. Treten die Symptome immer nach Brot auf?")
         def create_doc_pdf(df, notes):
             pdf = FPDF()
             pdf.add_page()
@@ -330,7 +277,7 @@ elif page == "Arzt-Modus":
             pdf.set_font("Arial", "B", 13)
             pdf.cell(0, 10, "Notizen/Fragen:", ln=True)
             pdf.set_font("Arial", size=11)
-            pdf.multi_cell(0, 8, notes if notes else "Keine Notizen hinterlegt.")
+            pdf.multi_cell(0, 8, notes if notes else "Keine Notizen.")
             pdf.ln(5)
             pdf.set_font("Arial", "B", 13)
             pdf.cell(0, 10, "Historie (Auszug):", ln=True)
@@ -338,7 +285,6 @@ elif page == "Arzt-Modus":
             for _, r in df.tail(15).iterrows():
                 pdf.cell(0, 7, f"{r['Datum']} - {r['Mahlzeit']}: {r['Symptome']} (Intensität: {r['Intensität']})", ln=True)
             return pdf.output(dest='S').encode('latin-1')
-
         st.download_button("📄 PDF für Arzt generieren", data=create_doc_pdf(df, arzt_notes), file_name=f"Arztbericht_{st.session_state.user_name}.pdf", mime="application/pdf", use_container_width=True)
     else:
         st.info("Bitte erfasse zuerst Daten.")
