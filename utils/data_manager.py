@@ -11,53 +11,27 @@ class DataManager:
 
         try:
             conf = st.secrets["webdav"]
-            # Wir bauen User und Passwort direkt in die Adresse ein
-            host = conf['hostname'].replace("https://", "").strip("/")
-            user = conf['username']
-            pw = conf['password']
+            clean_host = conf['hostname'].replace("https://", "").replace("http://", "").strip("/")
             
-            # Die URL sieht dann so aus: https://user:pass@host/...
-            url = f"https://{user}:{pw}@{host}/remote.php/dav/files/{user}/"
+            # Die stabilste Methode: Login direkt in die URL
+            auth_url = f"https://{conf['username']}:{conf['password']}@{clean_host}/remote.php/dav/files/{conf['username']}/"
             
+            # Wir geben NUR das Nötigste mit, um keine Fehler zu provozieren
             self.fs = filesystem(
                 self.fs_protocol,
-                base_url=url,
-                requests_kwargs={'verify': False}
+                base_url=auth_url
             )
 
             if self.fs.exists(self.fs_root_folder):
                 st.sidebar.success("✅ SwitchDrive aktiv")
             else:
                 self.fs.mkdir(self.fs_root_folder)
-                st.sidebar.success("✅ Ordner erstellt & aktiv")
+                st.sidebar.success("✅ Ordner bereit")
 
         except Exception as e:
             st.sidebar.error(f"Verbindung fehlgeschlagen: {e}")
             self.fs = None
 
-    # NEU: Speziell für Tabellen (Allergie-Daten)
-    def load_app_data(self, filename, initial_value=None):
-        path = f"{self.fs_root_folder}/{filename}"
-        try:
-            if self.fs and self.fs.exists(path):
-                with self.fs.open(path, 'rb') as f:
-                    return pd.read_csv(f)
-        except:
-            pass
-        return pd.DataFrame()
-
-    def save_app_data(self, df, filename):
-        path = f"{self.fs_root_folder}/{filename}"
-        if self.fs:
-            try:
-                with self.fs.open(path, 'wb') as f:
-                    df.to_csv(f, index=False)
-                return True
-            except:
-                pass
-        return False
-
-    # NEU: Speziell für Login-Daten (Credentials)
     def load_json_data(self, filename, initial_value=None):
         path = f"{self.fs_root_folder}/{filename}"
         try:
@@ -70,10 +44,31 @@ class DataManager:
 
     def save_json_data(self, data, filename):
         path = f"{self.fs_root_folder}/{filename}"
-        if self.fs:
-            try:
+        try:
+            if self.fs:
                 with self.fs.open(path, 'w', encoding='utf-8') as f:
                     json.dump(data, f, indent=4)
+                return True
+        except:
+            pass
+        return False
+
+    def load_app_data(self, filename):
+        path = f"{self.fs_root_folder}/{filename}"
+        try:
+            if self.fs and self.fs.exists(path):
+                with self.fs.open(path, 'rb') as f:
+                    return pd.read_csv(f)
+        except:
+            pass
+        return pd.DataFrame()
+    
+    def save_app_data(self, df, filename):
+        path = f"{self.fs_root_folder}/{filename}"
+        if self.fs:
+            try:
+                with self.fs.open(path, 'wb') as f:
+                    df.to_csv(f, index=False)
                 return True
             except:
                 pass
