@@ -42,24 +42,38 @@ class LoginManager:
         login_tab, register_tab = st.tabs(["Anmelden", "Konto erstellen"])
 
         with login_tab:
-            # Der Authenticator erledigt den Login intern
             self.authenticator.login(location='main')
-            
-            # WICHTIG: Hier setzen wir die Variable, die app.py abfragt
             if st.session_state.get("authentication_status"):
                 st.session_state['logged_in'] = True
-                st.session_state['username'] = st.session_state['username']
             elif st.session_state.get("authentication_status") is False:
                 st.error('Username/Passwort falsch')
 
         with register_tab:
-            try:
-                res = self.authenticator.register_user(location='main', captcha=False)
-                if res:
-                    self._save_credentials()
-                    st.success('Registriert! Bitte oben auf "Anmelden" klicken.')
-            except Exception as e:
-                st.info("Bitte fülle die Felder zur Registrierung aus.")
+            st.subheader("Neues Konto anlegen")
+            new_email = st.text_input("E-Mail")
+            new_username = st.text_input("Username (kleingeschrieben)")
+            new_name = st.text_input("Vollständiger Name")
+            new_pw = st.text_input("Passwort", type="password")
+            
+            if st.button("Jetzt registrieren"):
+                if new_email and new_username and new_pw:
+                    # Wir hashen das Passwort selbst, damit der Authenticator es später lesen kann
+                    hashed_pw = stauth.Hasher([new_pw]).generate()[0]
+                    
+                    # Wir fügen den User manuell in unsere Datenstruktur ein
+                    self.auth_credentials['usernames'][new_username] = {
+                        "email": new_email,
+                        "name": new_name,
+                        "password": hashed_pw
+                    }
+                    
+                    # Speichern auf SwitchDrive
+                    if self.dm.save_json_data(self.auth_credentials, self.auth_credentials_file):
+                        st.success(f"User '{new_username}' wurde angelegt! Geh jetzt zum Tab 'Anmelden'.")
+                    else:
+                        st.error("Fehler beim Speichern auf SwitchDrive.")
+                else:
+                    st.warning("Bitte fülle alle Felder aus.")
 
     def logout(self):
         if hasattr(self, 'authenticator'):
