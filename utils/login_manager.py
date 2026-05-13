@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit_authenticator as stauth
-import yaml
-from yaml.loader import SafeLoader
+import secrets
+import json
 
 class LoginManager:
     _instance = None
@@ -14,12 +14,12 @@ class LoginManager:
         return st.session_state.login_manager
 
     def __init__(self, data_manager=None):
-        # Initialisierung nur beim ersten Mal
         if not hasattr(self, 'initialized'):
             self.dm = data_manager
             self.auth_credentials_file = 'credentials.json'
             self.auth_cookie_name = 'allergy_tracker_cookie'
-            self.auth_cookie_key = 'some_signature_key'
+            # Wir nutzen secrets für einen sicheren Schlüssel
+            self.auth_cookie_key = secrets.token_urlsafe(32)
             self.initialized = True
 
     def _load_credentials(self):
@@ -50,11 +50,15 @@ class LoginManager:
         login_tab, register_tab = st.tabs(["Anmelden", "Konto erstellen"])
 
         with login_tab:
-            name, authentication_status, username = self.authenticator.login('main')
+            # FIX: In der neuen Version von stauth wird der Login so aufgerufen:
+            self.authenticator.login(location='main')
 
+            # Die Status-Werte ziehen wir uns jetzt direkt aus dem session_state
             if st.session_state["authentication_status"]:
                 st.session_state.logged_in = True
-                st.session_state.username = username
+                # Nutzername für die App setzen
+                if 'username' not in st.session_state:
+                    st.session_state.username = st.session_state["username"]
             elif st.session_state["authentication_status"] is False:
                 st.error('Benutzername/Passwort ist falsch')
             elif st.session_state["authentication_status"] is None:
@@ -63,9 +67,9 @@ class LoginManager:
         with register_tab:
             try:
                 # Registrierungsformular
-                email_of_registered_user, username_of_registered_user, name_of_registered_user = self.authenticator.register_user(pre_authorized=['admin@test.ch'])
-                if email_of_registered_user:
-                    # Speichern, wenn Registrierung erfolgreich
+                res = self.authenticator.register_user(pre_authorized=['admin@test.ch'])
+                # res[0] ist die E-Mail des registrierten Users
+                if res and res[0]:
                     self._save_credentials()
                     st.success('Benutzer erfolgreich registriert! Du kannst dich jetzt anmelden.')
             except Exception as e:
