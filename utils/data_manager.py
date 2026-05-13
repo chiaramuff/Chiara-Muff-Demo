@@ -12,13 +12,10 @@ class DataManager:
         try:
             conf = st.secrets["webdav"]
             
-            # Host bereinigen (falls versehentlich https:// in den Secrets steht)
-            host = conf['hostname'].replace("https://", "").strip("/")
-            
-            # Die sicherste URL-Struktur für SwitchDrive
+            # Wir nutzen die Domain direkt aus den Secrets
+            host = conf['hostname'] 
             url = f"https://{host}/remote.php/dav/files/{conf['username']}/"
             
-            # Verbindung aufbauen - Wir nutzen hier die direkten Argumente
             self.fs = filesystem(
                 'webdav',
                 base_url=url,
@@ -26,14 +23,14 @@ class DataManager:
                 password=conf['password']
             )
 
-            # Test: Können wir das Verzeichnis sehen?
-            if self.fs and self.fs.exists(self.fs_root_folder):
-                 st.sidebar.success("✅ SwitchDrive aktiv")
-            else:
-                # Falls der Ordner fehlt, erstellen wir ihn
-                self.fs.mkdir(self.fs_root_folder)
-                st.sidebar.success("✅ SwitchDrive aktiv (Ordner erstellt)")
+            # Ein einfacher Test-Zugriff
+            self.fs.ls("/") 
+            st.sidebar.success("✅ SwitchDrive aktiv")
 
+        except Exception as e:
+            # Hier stand dein "[Errno -2]" Fehler
+            st.sidebar.error(f"Verbindung fehlgeschlagen: {e}")
+            self.fs = None
         except Exception as e:
             # Das zeigt uns den exakten Grund direkt in der App an
             st.sidebar.error(f"Fehler-Details: {e}")
