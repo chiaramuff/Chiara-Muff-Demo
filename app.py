@@ -18,12 +18,14 @@ dm = st.session_state.data_manager
 login_manager = LoginManager(dm)
 
 # --- 4. LOGIN PROZESS ---
-login_manager.login_register()
+# ... nach login_manager.login_register() ...
 
-if not (st.session_state.get('logged_in') or st.session_state.get('authentication_status')):
+# Wenn NICHT eingeloggt, stoppe hier (damit Dashboard nicht gezeigt wird)
+if not st.session_state.get('authentication_status'):
     st.stop()
 
-user_name = st.session_state.get('username', 'Nutzer')
+# AB HIER kommt dein Dashboard-Code (Navigation, etc.)
+st.sidebar.success(f"Eingeloggt als {st.session_state.get('username')}")
 
 # --- 5. NAVIGATION LOGIK ---
 if 'nav_index' not in st.session_state:
