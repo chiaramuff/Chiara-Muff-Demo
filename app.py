@@ -36,7 +36,7 @@ options = ["Home", "Mahlzeit tracken", "Übersicht & Grafik", "Gut zu wissen", "
 
 # --- 6. SIDEBAR ---
 with st.sidebar:
-    st.markdown(f"### User: **{user_name}**")
+    st.markdown(f"### User: **{st.session_state.get('username', 'Gast')}**")
     
     # Der Status wird automatisch vom DataManager in der Sidebar angezeigt
     
