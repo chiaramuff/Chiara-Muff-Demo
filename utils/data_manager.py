@@ -17,7 +17,7 @@ class DataManager:
             self.fs = filesystem(
                 self.fs_protocol,
                 base_url=url,
-                username=conf['user'],
+                user=conf['username'],
                 password=conf['password'],
                 requests_kwargs={'verify': False}
             )
