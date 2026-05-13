@@ -1,5 +1,7 @@
 import streamlit as st
 from fsspec import filesystem
+import pandas as pd
+import json
 
 class DataManager:
     def __init__(self, fs_protocol='webdav', fs_root_folder="Allergie-Tracker"):
@@ -9,10 +11,7 @@ class DataManager:
 
         try:
             conf = st.secrets["webdav"]
-            # Sicherstellen, dass kein https:// im Hostnamen steht
             host = conf['hostname'].replace("https://", "").replace("http://", "").strip("/")
-            
-            # Die sicherste URL-Struktur für SwitchDrive ZHAW
             url = f"https://{host}/remote.php/dav/files/{conf['username']}/"
             
             self.fs = filesystem(
@@ -20,32 +19,27 @@ class DataManager:
                 base_url=url,
                 username=conf['username'],
                 password=conf['password'],
-                requests_kwargs={'verify': False}  # Umgeht SSL-Probleme in der Cloud
+                requests_kwargs={'verify': False}
             )
 
-            # Prüfen, ob der Hauptordner existiert
             if not self.fs.exists(self.fs_root_folder):
                 self.fs.mkdir(self.fs_root_folder)
                 
             st.sidebar.success("✅ SwitchDrive aktiv")
-
         except Exception as e:
-            # Zeigt den exakten Fehler in der Sidebar an
             st.sidebar.error(f"❌ Verbindung fehlgeschlagen: {e}")
             self.fs = None
 
+    # NEU: Speziell für Tabellen (Allergie-Daten)
     def load_app_data(self, filename, initial_value=None):
         path = f"{self.fs_root_folder}/{filename}"
         try:
             if self.fs and self.fs.exists(path):
                 with self.fs.open(path, 'rb') as f:
-                    import pandas as pd
                     return pd.read_csv(f)
-        except Exception as e:
-            print(f"Ladefehler: {e}")
-        
-        import pandas as pd
-        return pd.DataFrame() # Falls Datei nicht existiert, leere Tabelle zurückgeben
+        except:
+            pass
+        return pd.DataFrame()
 
     def save_app_data(self, df, filename):
         path = f"{self.fs_root_folder}/{filename}"
@@ -54,6 +48,28 @@ class DataManager:
                 with self.fs.open(path, 'wb') as f:
                     df.to_csv(f, index=False)
                 return True
-            except Exception as e:
-                print(f"Speicherfehler: {e}")
+            except:
+                pass
+        return False
+
+    # NEU: Speziell für Login-Daten (Credentials)
+    def load_json_data(self, filename, initial_value=None):
+        path = f"{self.fs_root_folder}/{filename}"
+        try:
+            if self.fs and self.fs.exists(path):
+                with self.fs.open(path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except:
+            pass
+        return initial_value if initial_value is not None else {"usernames": {}}
+
+    def save_json_data(self, data, filename):
+        path = f"{self.fs_root_folder}/{filename}"
+        if self.fs:
+            try:
+                with self.fs.open(path, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=4)
+                return True
+            except:
+                pass
         return False
