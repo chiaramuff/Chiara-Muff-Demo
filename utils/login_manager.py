@@ -58,7 +58,7 @@ class LoginManager:
             if st.button("Jetzt registrieren"):
                 if new_email and new_username and new_pw:
                     # Wir hashen das Passwort selbst, damit der Authenticator es später lesen kann
-                    hashed_pw = stauth.Hasher([new_pw]).generate()[0]
+                    hashed_pw = stauth.Hasher.hash(new_pw)
                     
                     # Wir fügen den User manuell in unsere Datenstruktur ein
                     self.auth_credentials['usernames'][new_username] = {
