@@ -1,12 +1,10 @@
 import pandas as pd
 import streamlit as st
-from io import StringIO
 
 class DataManager:
     def __init__(self, fs_protocol='webdav', fs_root_folder="Allergie-Tracker"):
         self.fs_protocol = fs_protocol
         self.fs_root_folder = fs_root_folder
-        # Hier werden die Zugangsdaten aus den Streamlit Secrets geladen
         try:
             from fsspec import filesystem
             self.fs = filesystem(
@@ -15,13 +13,8 @@ class DataManager:
                 username=st.secrets["webdav"]["username"],
                 password=st.secrets["webdav"]["password"]
             )
-        except Exception as e:
-            st.error(f"Fehler bei der Verbindung zu SwitchDrive: {e}")
+        except:
             self.fs = None
-
-    def exists(self, filename):
-        path = f"{self.fs_root_folder}/{filename}"
-        return self.fs.exists(path) if self.fs else False
 
     def load_user_data(self, filename, initial_value=None):
         path = f"{self.fs_root_folder}/{filename}"
@@ -36,9 +29,7 @@ class DataManager:
             with self.fs.open(path, 'wb') as f:
                 df.to_csv(f, index=False)
 
-    # DIESE METHODEN BRAUCHT DER LOGIN-MANAGER
     def load_app_data(self, filename, initial_value=None):
-        """Lädt App-Daten (wie Passwörter) direkt."""
         import json
         path = f"{self.fs_root_folder}/{filename}"
         if self.fs and self.fs.exists(path):
@@ -47,7 +38,6 @@ class DataManager:
         return initial_value
 
     def save_app_data(self, data, filename):
-        """Speichert App-Daten direkt."""
         import json
         path = f"{self.fs_root_folder}/{filename}"
         if self.fs:
