@@ -11,38 +11,48 @@ from utils.login_manager import LoginManager
 from functions.data_handler import load_tracker_data, save_to_csv
 
 # --- 3. INITIALISIERUNG ---
-# Das löscht den alten Manager und erzwingt eine neue Verbindung bei jedem Laden
-st.session_state.data_manager = DataManager()
+# Wir stellen sicher, dass der DataManager im Session State existiert
+if 'data_manager' not in st.session_state:
+    st.session_state.data_manager = DataManager()
 
 dm = st.session_state.data_manager
 login_manager = LoginManager(dm)
 
-# Login Prozess
+# --- 4. LOGIN PROZESS ---
 login_manager.login_register()
+
+# Falls nicht eingeloggt, stoppe die Ausführung hier
 if not (st.session_state.get('logged_in') or st.session_state.get('authentication_status')):
     st.stop()
 
+# Nutzername abrufen
 user_name = st.session_state.get('username', 'Nutzer')
 
-# Navigation Logik
+# --- 5. NAVIGATION LOGIK ---
 if 'nav_index' not in st.session_state:
     st.session_state.nav_index = 0
 
 options = ["Home", "Mahlzeit tracken", "Übersicht & Grafik", "Gut zu wissen", "Arzt-Modus"]
 
+# --- 6. SIDEBAR ---
 with st.sidebar:
     st.markdown(f"### User: **{user_name}**")
+    
     # Verbindungs-Status anzeigen
     if dm.fs is not None:
         st.success("✅ SwitchDrive aktiv")
     else:
         st.error("❌ Keine Verbindung")
     
+    # Radio-Button für Navigation
     page = st.radio("Navigation", options, index=st.session_state.nav_index)
     st.session_state.nav_index = options.index(page)
     
+    st.divider()
+    
     if st.button("Logout"):
-        for key in list(st.session_state.keys()): del st.session_state[key]
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
         st.rerun()
 
 # --- 7. SEITEN-LOGIK ---
@@ -66,7 +76,7 @@ if page == "Home":
     
     # Letzte Aktivität anzeigen
     data = load_tracker_data(dm, user_name)
-    if not data.empty:
+    if data is not None and not data.empty:
         last = data.iloc[-1]
         st.info(f"Dein letzter Eintrag: **{last['Mahlzeit']}** ({last['Datum']})")
     else:
@@ -82,23 +92,30 @@ elif page == "Mahlzeit tracken":
         if st.button("Speichern auf SwitchDrive"):
             if m_val:
                 save_to_csv(dm, {
-                    "Nutzer": user_name, "Datum": d_val.strftime('%Y-%m-%d'),
-                    "Uhrzeit": datetime.now().strftime('%H:%M'), "Mahlzeit": m_val,
-                    "Symptome": "Check", "Intensität": intens, "Bemerkungen": ""
+                    "Nutzer": user_name, 
+                    "Datum": d_val.strftime('%Y-%m-%d'),
+                    "Uhrzeit": datetime.now().strftime('%H:%M'), 
+                    "Mahlzeit": m_val,
+                    "Symptome": "Check", 
+                    "Intensität": intens, 
+                    "Bemerkungen": ""
                 })
                 st.success("Daten wurden erfolgreich in die Cloud übertragen!")
-                # Optional: Nach dem Speichern zur Grafik springen
-                # st.session_state.nav_index = 2
-                # st.rerun()
             else:
                 st.error("Bitte gib eine Mahlzeit ein.")
 
 elif page == "Übersicht & Grafik":
     st.header("📊 Deine Analyse")
     data = load_tracker_data(dm, user_name)
-    if not data.empty:
+    if data is not None and not data.empty:
         st.dataframe(data.drop(columns=["Nutzer"]), use_container_width=True)
     else:
         st.info("Noch keine Daten zum Anzeigen verfügbar.")
 
-# (Hier kannst du die restlichen Seiten "Gut zu wissen" und "Arzt-Modus" wie gehabt einfügen)
+elif page == "Gut zu wissen":
+    st.header("💡 Wissenswertes")
+    st.write("Hier findest du bald Infos zu Allergien.")
+
+elif page == "Arzt-Modus":
+    st.header("👨‍⚕️ Arzt-Export")
+    st.write("Bereich für den Daten-Export für deinen Arzt.")

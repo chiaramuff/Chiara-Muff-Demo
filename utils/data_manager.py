@@ -10,26 +10,16 @@ class DataManager:
         self.fs = None
 
         try:
-            # Wir bauen das Konfigurations-Paket exakt wie der Dozent
-            # Aber wir bereiten beide Varianten vor (login und username)
+            # Daten aus der secrets.toml laden
             conf = st.secrets["webdav"]
             
-            # Das ist der Kern der Samuel-Wehrli-Logik:
             webdav_options = {
-                'base_url': conf['hostname'],
+                'base_url': f"https://{conf['hostname']}/remote.php/webdav/",
+                'username': conf['username'],
                 'password': conf['password']
             }
 
-            # Wir probieren es erst mit 'login' (SwitchDrive Standard)
-            try:
-                webdav_options['login'] = conf['username']
-                self.fs = filesystem(self.fs_protocol, **webdav_options)
-            except TypeError:
-                # Falls dein System 'login' nicht mag, wechseln wir auf 'username'
-                del webdav_options['login']
-                webdav_options['username'] = conf['username']
-                self.fs = filesystem(self.fs_protocol, **webdav_options)
-
+            self.fs = filesystem(self.fs_protocol, **webdav_options)
             # Prüfen ob der Ordner da ist
             if not self.fs.exists(self.fs_root_folder):
                 self.fs.mkdir(self.fs_root_folder)
