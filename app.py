@@ -134,7 +134,7 @@ elif page == "Mahlzeit tracken":
                 st.session_state.show_success_nav = False
                 st.rerun()
         with c_n2:
-            if st.button("📊 Zur Analyse", use_container_width=True):
+            if st.button("📊 Zur Übersicht", use_container_width=True):
                 st.session_state.show_success_nav = False
                 st.session_state.nav_index = 2
                 st.rerun()
@@ -143,7 +143,7 @@ elif page == "Übersicht & Grafik":
     st.header("📊 Deine Historie & Analyse")
     u1, u2 = st.columns(2)
     with u1:
-        if st.button("💡 Lexikon & Details", use_container_width=True): st.session_state.nav_index = 3; st.rerun()
+        if st.button("💡 Gut zu wissen", use_container_width=True): st.session_state.nav_index = 3; st.rerun()
     with u2:
         if st.button("🩺 Arzt-Dashboard", use_container_width=True): st.session_state.nav_index = 4; st.rerun()
     st.divider()
@@ -200,7 +200,7 @@ elif page == "Gut zu wissen":
         else:
             st.success(f"✅ Bisher keine Symptome bei **{sel}** in deiner Historie gefunden.")
 
-elif page == "Arzt-Modus":
+elif page == "Arzt-Dashboard":
     st.title("🩺 Arzt-Dashboard")
     data = load_tracker_data(st.session_state.user_name)
     if not data.empty:
