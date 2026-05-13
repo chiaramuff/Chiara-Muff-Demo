@@ -10,24 +10,33 @@ class DataManager:
         self.fs = None
 
         try:
-            # Daten aus der secrets.toml laden
             conf = st.secrets["webdav"]
             
-            webdav_options = {
-                'base_url': f"https://{conf['hostname']}/remote.php/webdav/",
-                'username': conf['username'],
-                'password': conf['password']
-            }
+            # Host bereinigen (falls versehentlich https:// in den Secrets steht)
+            host = conf['hostname'].replace("https://", "").strip("/")
+            
+            # Die sicherste URL-Struktur für SwitchDrive
+            url = f"https://{host}/remote.php/dav/files/{conf['username']}/"
+            
+            # Verbindung aufbauen - Wir nutzen hier die direkten Argumente
+            self.fs = filesystem(
+                'webdav',
+                base_url=url,
+                username=conf['username'],
+                password=conf['password']
+            )
 
-            self.fs = filesystem(self.fs_protocol, **webdav_options)
-            # Prüfen ob der Ordner da ist
-            if not self.fs.exists(self.fs_root_folder):
+            # Test: Können wir das Verzeichnis sehen?
+            if self.fs and self.fs.exists(self.fs_root_folder):
+                 st.sidebar.success("✅ SwitchDrive aktiv")
+            else:
+                # Falls der Ordner fehlt, erstellen wir ihn
                 self.fs.mkdir(self.fs_root_folder)
-                
-            st.sidebar.success("✅ Verbindung steht!")
+                st.sidebar.success("✅ SwitchDrive aktiv (Ordner erstellt)")
 
         except Exception as e:
-            st.error(f"Verbindungsfehler: {e}")
+            st.sidebar.error(f"❌ Verbindung fehlgeschlagen: {e}")
+            self.fs = None
 
     # --- Ab hier: Die Standard-Funktionen für deine App ---
     def load_app_data(self, filename, initial_value=None):
