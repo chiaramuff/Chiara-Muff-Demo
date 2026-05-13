@@ -55,7 +55,7 @@ if not st.session_state.logged_in:
 # --- 5. NAVIGATION (Sidebar) ---
 with st.sidebar:
     st.title("Menü")
-    options = ["Home", "Mahlzeit tracken", "Übersicht & Grafik", "Gut zu wissen", "Arzt-Modus"]
+    options = ["Home", "Mahlzeit tracken", "Übersicht & Grafik", "Gut zu wissen", "Arzt-Dashboard"]
     page = st.radio("Navigation", options, index=st.session_state.nav_index)
     st.session_state.nav_index = options.index(page)
     st.divider()
