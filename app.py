@@ -56,13 +56,8 @@ if 'nav_index' not in st.session_state:
     st.session_state.nav_index = 0
 
 with st.sidebar:
-<<<<<<< HEAD
     st.markdown(f"### Angemeldet als: **{user_name}**")
     options = ["Home", "Mahlzeit tracken", "Übersicht & Grafik", "Gut zu wissen", "Arzt-Modus"]
-=======
-    st.title("Menü")
-    options = ["Home", "Mahlzeit tracken", "Übersicht & Grafik", "Gut zu wissen", "Arzt-Dashboard"]
->>>>>>> 7700612ef9d9725aaa834032481efc9e9d45cad9
     page = st.radio("Navigation", options, index=st.session_state.nav_index)
     st.session_state.nav_index = options.index(page)
     
