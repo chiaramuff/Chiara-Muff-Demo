@@ -35,7 +35,8 @@ class DataManager:
                 st.sidebar.success("✅ SwitchDrive aktiv (Ordner erstellt)")
 
         except Exception as e:
-            st.sidebar.error(f"❌ Verbindung fehlgeschlagen: {e}")
+            # Das zeigt uns den exakten Grund direkt in der App an
+            st.sidebar.error(f"Fehler-Details: {e}")
             self.fs = None
 
     # --- Ab hier: Die Standard-Funktionen für deine App ---
