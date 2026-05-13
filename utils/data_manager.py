@@ -11,23 +11,28 @@ class DataManager:
 
         try:
             conf = st.secrets["webdav"]
-            host = conf['hostname'].replace("https://", "").replace("http://", "").strip("/")
-            url = f"https://{host}/remote.php/dav/files/{conf['username']}/"
+            # Wir bauen User und Passwort direkt in die Adresse ein
+            host = conf['hostname'].replace("https://", "").strip("/")
+            user = conf['username']
+            pw = conf['password']
+            
+            # Die URL sieht dann so aus: https://user:pass@host/...
+            url = f"https://{user}:{pw}@{host}/remote.php/dav/files/{user}/"
             
             self.fs = filesystem(
                 self.fs_protocol,
                 base_url=url,
-                user=conf['username'],
-                password=conf['password'],
                 requests_kwargs={'verify': False}
             )
 
-            if not self.fs.exists(self.fs_root_folder):
+            if self.fs.exists(self.fs_root_folder):
+                st.sidebar.success("✅ SwitchDrive aktiv")
+            else:
                 self.fs.mkdir(self.fs_root_folder)
-                
-            st.sidebar.success("✅ SwitchDrive aktiv")
+                st.sidebar.success("✅ Ordner erstellt & aktiv")
+
         except Exception as e:
-            st.sidebar.error(f"❌ Verbindung fehlgeschlagen: {e}")
+            st.sidebar.error(f"Verbindung fehlgeschlagen: {e}")
             self.fs = None
 
     # NEU: Speziell für Tabellen (Allergie-Daten)
