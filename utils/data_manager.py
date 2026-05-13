@@ -1,6 +1,4 @@
-import pandas as pd
 import streamlit as st
-import json
 from fsspec import filesystem
 
 class DataManager:
@@ -11,37 +9,40 @@ class DataManager:
 
         try:
             conf = st.secrets["webdav"]
-            # Wir säubern den Hostnamen extrem vorsichtig
+            # Sicherstellen, dass kein https:// im Hostnamen steht
             host = conf['hostname'].replace("https://", "").replace("http://", "").strip("/")
             
-            # SwitchDrive nutzt oft diesen spezifischen Pfad für User-Files
-            # Wichtig: Deine E-Mail muss in den Secrets als username stehen
+            # Die sicherste URL-Struktur für SwitchDrive ZHAW
             url = f"https://{host}/remote.php/dav/files/{conf['username']}/"
             
             self.fs = filesystem(
-                'webdav',
+                self.fs_protocol,
                 base_url=url,
                 username=conf['username'],
-                password=conf['password']
+                password=conf['password'],
+                requests_kwargs={'verify': False}  # Umgeht SSL-Probleme in der Cloud
             )
 
-            # Ein einfacher Test: Wenn das klappt, ist die Fehlermeldung weg!
-            self.fs.ls("/") 
+            # Prüfen, ob der Hauptordner existiert
+            if not self.fs.exists(self.fs_root_folder):
+                self.fs.mkdir(self.fs_root_folder)
+                
             st.sidebar.success("✅ SwitchDrive aktiv")
 
         except Exception as e:
-            # Das zeigt uns den exakten Fehler an, falls es noch hakt
+            # Zeigt den exakten Fehler in der Sidebar an
             st.sidebar.error(f"❌ Verbindung fehlgeschlagen: {e}")
             self.fs = None
 
-    # --- Ab hier: Die Standard-Funktionen für deine App ---
-    def load_app_data(self, filename, initial_value=None):
-        path = f"{self.fs_root_folder}/{filename}"
+    def load_app_data(self, self_filename, initial_value=None):
+        path = f"{self.fs_root_folder}/{self_filename}"
         try:
             if self.fs and self.fs.exists(path):
                 with self.fs.open(path, 'r', encoding='utf-8') as f:
+                    import json
                     return json.load(f)
-        except: pass
+        except:
+            pass
         return initial_value if initial_value is not None else {}
 
     def save_app_data(self, data, filename):
@@ -49,26 +50,9 @@ class DataManager:
         if self.fs:
             try:
                 with self.fs.open(path, 'w', encoding='utf-8') as f:
+                    import json
                     json.dump(data, f, indent=4)
                 return True
-            except: pass
-        return False
-
-    def load_user_data(self, filename, initial_value=None):
-        path = f"{self.fs_root_folder}/{filename}"
-        try:
-            if self.fs and self.fs.exists(path):
-                with self.fs.open(path, 'rb') as f:
-                    return pd.read_csv(f)
-        except: pass
-        return initial_value if initial_value is not None else pd.DataFrame()
-
-    def save_user_data(self, df, filename):
-        path = f"{self.fs_root_folder}/{filename}"
-        if self.fs:
-            try:
-                with self.fs.open(path, 'wb') as f:
-                    df.to_csv(f, index=False)
-                return True
-            except: pass
+            except:
+                pass
         return False
