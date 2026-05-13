@@ -67,7 +67,7 @@ class LoginManager:
         with register_tab:
             try:
                 # Registrierungsformular
-                res = self.authenticator.register_user(pre_authorized=['admin@test.ch'])
+                res = self.authenticator.register_user(pre_authorized=None])
                 # res[0] ist die E-Mail des registrierten Users
                 if res and res[0]:
                     self._save_credentials()
