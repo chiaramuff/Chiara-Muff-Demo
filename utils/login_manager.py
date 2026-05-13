@@ -18,16 +18,15 @@ class LoginManager:
             self.dm = data_manager
             self.auth_credentials_file = 'credentials.json'
             self.auth_cookie_name = 'allergy_tracker_cookie'
-            # Wir nutzen secrets für einen sicheren Schlüssel
             self.auth_cookie_key = secrets.token_urlsafe(32)
             self.initialized = True
 
     def _load_credentials(self):
-        """Lädt die Benutzerdaten via DataManager als Dictionary (JSON)."""
-        return self.dm.load_json_data(
-            self.auth_credentials_file, 
-            initial_value={'usernames': {}}
-        )
+        """Lädt die Benutzerdaten via DataManager. Erzeugt Grundstruktur, falls leer."""
+        data = self.dm.load_json_data(self.auth_credentials_file)
+        if not data or 'usernames' not in data:
+            return {'usernames': {}}
+        return data
 
     def _save_credentials(self):
         """Speichert die aktuellen Benutzerdaten via DataManager."""
@@ -50,34 +49,35 @@ class LoginManager:
         login_tab, register_tab = st.tabs(["Anmelden", "Konto erstellen"])
 
         with login_tab:
-            # FIX: In der neuen Version von stauth wird der Login so aufgerufen:
             self.authenticator.login(location='main')
 
-            # Die Status-Werte ziehen wir uns jetzt direkt aus dem session_state
-            if st.session_state["authentication_status"]:
+            if st.session_state.get("authentication_status"):
                 st.session_state.logged_in = True
-                # Nutzername für die App setzen
-                if 'username' not in st.session_state:
-                    st.session_state.username = st.session_state["username"]
-            elif st.session_state["authentication_status"] is False:
+                # Den Usernamen für die restliche App global verfügbar machen
+                if "username" not in st.session_state:
+                    st.session_state.username = st.session_state.get("username")
+            elif st.session_state.get("authentication_status") is False:
                 st.error('Benutzername/Passwort ist falsch')
-            elif st.session_state["authentication_status"] is None:
+            elif st.session_state.get("authentication_status") is None:
                 st.warning('Bitte gib deinen Benutzernamen und dein Passwort ein')
 
         with register_tab:
             try:
-                # Registrierungsformular
-                res = self.authenticator.register_user(pre_authorized=None])
-                # res[0] ist die E-Mail des registrierten Users
-                if res and res[0]:
+                # pre_authorized=None erlaubt jedem die Registrierung
+                res = self.authenticator.register_user(location='main', pre_authorized=None)
+                
+                if res:
+                    # Der Authenticator hat self.auth_credentials im Hintergrund aktualisiert
                     self._save_credentials()
-                    st.success('Benutzer erfolgreich registriert! Du kannst dich jetzt anmelden.')
+                    st.success('Benutzer erfolgreich registriert! Du kannst dich jetzt im Tab "Anmelden" einloggen.')
             except Exception as e:
-                st.error(f"Fehler bei der Registrierung: {e}")
+                # Verhindert den Absturz, falls Felder noch leer sind
+                st.info("Fülle die Felder oben aus, um ein neues Konto zu erstellen.")
 
     def logout(self):
-        """Logout-Logik."""
-        self.authenticator.logout('Logout', 'sidebar')
+        """Logout-Logik: Löscht die Session und erzwingt Neustart."""
+        if self.authenticator:
+            self.authenticator.logout('Logout', 'sidebar')
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
