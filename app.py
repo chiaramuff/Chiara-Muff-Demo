@@ -16,9 +16,10 @@ if 'data_manager' not in st.session_state:
 
 dm = st.session_state.data_manager
 login_manager = LoginManager(dm)
+login_manager.login_register()
 
 # --- 4. LOGIN PROZESS ---
-# ... nach login_manager.login_register() ...
+
 
 # Wenn NICHT eingeloggt, stoppe hier (damit Dashboard nicht gezeigt wird)
 if not st.session_state.get('authentication_status'):
