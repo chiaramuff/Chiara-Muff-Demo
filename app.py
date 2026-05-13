@@ -56,8 +56,13 @@ if 'nav_index' not in st.session_state:
     st.session_state.nav_index = 0
 
 with st.sidebar:
+<<<<<<< HEAD
     st.markdown(f"### Angemeldet als: **{user_name}**")
     options = ["Home", "Mahlzeit tracken", "Übersicht & Grafik", "Gut zu wissen", "Arzt-Modus"]
+=======
+    st.title("Menü")
+    options = ["Home", "Mahlzeit tracken", "Übersicht & Grafik", "Gut zu wissen", "Arzt-Dashboard"]
+>>>>>>> 7700612ef9d9725aaa834032481efc9e9d45cad9
     page = st.radio("Navigation", options, index=st.session_state.nav_index)
     st.session_state.nav_index = options.index(page)
     
@@ -112,9 +117,34 @@ elif page == "Mahlzeit tracken":
             else:
                 st.error("Bitte gib an, was du gegessen hast.")
 
+<<<<<<< HEAD
 elif page == "Übersicht & Grafik":
     st.header("📊 Deine Analyse")
     data = load_tracker_data(dm, user_name)
+=======
+    if st.session_state.show_success_nav:
+        st.divider(); st.success("Daten wurden erfolgreich gespeichert!")
+        c_n1, c_n2 = st.columns(2)
+        with c_n1:
+            if st.button("➕ Weiteren Eintrag", use_container_width=True):
+                st.session_state.show_success_nav = False
+                st.rerun()
+        with c_n2:
+            if st.button("📊 Zur Übersicht", use_container_width=True):
+                st.session_state.show_success_nav = False
+                st.session_state.nav_index = 2
+                st.rerun()
+
+elif page == "Übersicht & Grafik":
+    st.header("📊 Deine Historie & Analyse")
+    u1, u2 = st.columns(2)
+    with u1:
+        if st.button("💡 Gut zu wissen", use_container_width=True): st.session_state.nav_index = 3; st.rerun()
+    with u2:
+        if st.button("🩺 Arzt-Dashboard", use_container_width=True): st.session_state.nav_index = 4; st.rerun()
+    st.divider()
+    data = load_tracker_data(st.session_state.user_name)
+>>>>>>> 7700612ef9d9725aaa834032481efc9e9d45cad9
     if not data.empty:
         st.dataframe(data.drop(columns=["Nutzer"]), use_container_width=True)
         st.subheader("Verlauf der Intensität")
@@ -142,9 +172,15 @@ elif page == "Gut zu wissen":
         else:
             st.success(f"Bisher keine Symptome bei {sel} dokumentiert.")
 
+<<<<<<< HEAD
 elif page == "Arzt-Modus":
     st.title("🩺 Arztbericht")
     data = load_tracker_data(dm, user_name)
+=======
+elif page == "Arzt-Dashboard":
+    st.title("🩺 Arzt-Dashboard")
+    data = load_tracker_data(st.session_state.user_name)
+>>>>>>> 7700612ef9d9725aaa834032481efc9e9d45cad9
     if not data.empty:
         notes = st.text_area("Fragen an den Arzt:")
         def create_pdf(df, n):
