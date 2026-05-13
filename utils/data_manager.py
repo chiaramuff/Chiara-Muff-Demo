@@ -11,9 +11,11 @@ class DataManager:
 
         try:
             conf = st.secrets["webdav"]
+            # Wir säubern den Hostnamen extrem vorsichtig
+            host = conf['hostname'].replace("https://", "").replace("http://", "").strip("/")
             
-            # Wir nutzen die Domain direkt aus den Secrets
-            host = conf['hostname'] 
+            # SwitchDrive nutzt oft diesen spezifischen Pfad für User-Files
+            # Wichtig: Deine E-Mail muss in den Secrets als username stehen
             url = f"https://{host}/remote.php/dav/files/{conf['username']}/"
             
             self.fs = filesystem(
@@ -23,17 +25,13 @@ class DataManager:
                 password=conf['password']
             )
 
-            # Ein einfacher Test-Zugriff
+            # Ein einfacher Test: Wenn das klappt, ist die Fehlermeldung weg!
             self.fs.ls("/") 
             st.sidebar.success("✅ SwitchDrive aktiv")
 
         except Exception as e:
-            # Hier stand dein "[Errno -2]" Fehler
-            st.sidebar.error(f"Verbindung fehlgeschlagen: {e}")
-            self.fs = None
-        except Exception as e:
-            # Das zeigt uns den exakten Grund direkt in der App an
-            st.sidebar.error(f"Fehler-Details: {e}")
+            # Das zeigt uns den exakten Fehler an, falls es noch hakt
+            st.sidebar.error(f"❌ Verbindung fehlgeschlagen: {e}")
             self.fs = None
 
     # --- Ab hier: Die Standard-Funktionen für deine App ---
