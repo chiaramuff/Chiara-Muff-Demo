@@ -34,25 +34,26 @@ class DataManager:
             st.sidebar.error(f"❌ Verbindung fehlgeschlagen: {e}")
             self.fs = None
 
-    def load_app_data(self, self_filename, initial_value=None):
-        path = f"{self.fs_root_folder}/{self_filename}"
+    def load_app_data(self, filename, initial_value=None):
+        path = f"{self.fs_root_folder}/{filename}"
         try:
             if self.fs and self.fs.exists(path):
-                with self.fs.open(path, 'r', encoding='utf-8') as f:
-                    import json
-                    return json.load(f)
-        except:
-            pass
-        return initial_value if initial_value is not None else {}
+                with self.fs.open(path, 'rb') as f:
+                    import pandas as pd
+                    return pd.read_csv(f)
+        except Exception as e:
+            print(f"Ladefehler: {e}")
+        
+        import pandas as pd
+        return pd.DataFrame() # Falls Datei nicht existiert, leere Tabelle zurückgeben
 
-    def save_app_data(self, data, filename):
+    def save_app_data(self, df, filename):
         path = f"{self.fs_root_folder}/{filename}"
         if self.fs:
             try:
-                with self.fs.open(path, 'w', encoding='utf-8') as f:
-                    import json
-                    json.dump(data, f, indent=4)
+                with self.fs.open(path, 'wb') as f:
+                    df.to_csv(f, index=False)
                 return True
-            except:
-                pass
+            except Exception as e:
+                print(f"Speicherfehler: {e}")
         return False
