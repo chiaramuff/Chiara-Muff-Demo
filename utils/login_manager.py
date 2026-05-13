@@ -22,7 +22,11 @@ class LoginManager:
             self.initialized = True
 
     def _load_credentials(self):
-        """Lädt die Benutzerdaten via DataManager. Erzeugt Grundstruktur, falls leer."""
+        """Erzwingt das Laden der frischen Daten vom Drive."""
+        # Wir löschen den Cache, falls vorhanden
+        if 'auth_credentials' in st.session_state:
+            del st.session_state['auth_credentials']
+            
         data = self.dm.load_json_data(self.auth_credentials_file)
         if not data or 'usernames' not in data:
             return {'usernames': {}}
