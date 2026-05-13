@@ -42,17 +42,19 @@ class LoginManager:
         login_tab, register_tab = st.tabs(["Anmelden", "Konto erstellen"])
 
         with login_tab:
+            # Der Authenticator erledigt den Login intern
             self.authenticator.login(location='main')
+            
+            # WICHTIG: Hier setzen wir die Variable, die app.py abfragt
             if st.session_state.get("authentication_status"):
-                st.session_state.logged_in = True
-                st.session_state.username = st.session_state.get("username")
+                st.session_state['logged_in'] = True
+                st.session_state['username'] = st.session_state['username']
             elif st.session_state.get("authentication_status") is False:
                 st.error('Username/Passwort falsch')
 
         with register_tab:
             try:
-                # Einfachste Version ohne pre_authorized
-                res = self.authenticator.register_user(location='main')
+                res = self.authenticator.register_user(location='main', captcha=False)
                 if res:
                     self._save_credentials()
                     st.success('Registriert! Bitte oben auf "Anmelden" klicken.')
@@ -62,6 +64,7 @@ class LoginManager:
     def logout(self):
         if hasattr(self, 'authenticator'):
             self.authenticator.logout('Logout', 'sidebar')
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
+        # Alles zurücksetzen
+        st.session_state['logged_in'] = False
+        st.session_state['authentication_status'] = None
         st.rerun()
