@@ -29,10 +29,10 @@ user_name = st.session_state.get('username')
 if 'nav_index' not in st.session_state:
     st.session_state.nav_index = 0
 
-# Exakt die 5 gewohnten Seiten
+# Exakt die 5 gewohnten Seiten beibehalten
 options = ["Home", "Mahlzeit tracken", "Übersicht & Grafik", "Gut zu wissen", "Arzt-Modus"]
 
-# Falls durch das Wechseln der Index kurz verwirrt war, fangen wir es hier ab
+# Schutz vor Index-Fehlern beim Versionswechsel
 if st.session_state.nav_index >= len(options):
     st.session_state.nav_index = 0
 
@@ -76,7 +76,7 @@ if page == "Home":
     else:
         st.write("Noch keine Einträge vorhanden.")
 
-# --- SEITE 2: MAHLZEIT TRACKEN (Mit aufploppenden Fragen bei 'Ja') ---
+# --- SEITE 2: MAHLZEIT TRACKEN ---
 elif page == "Mahlzeit tracken":
     st.header("🍴 Neue Mahlzeit erfassen")
     
@@ -91,14 +91,14 @@ elif page == "Mahlzeit tracken":
     
     m_val = st.text_input("Was hast du gegessen / getrunken?")
     
-    # Interaktive Abfrage
+    # Interaktive Abfrage: Bei "Ja" ploppen weitere Fragen auf
     symptome_ja_nein = st.radio("Traten Beschwerden / Symptome auf?", ["Nein", "Ja"], index=0)
     
     selected_symptom = "Keine Beschwerden"
     intens = 0
     bemerkung = ""
     
-    # HIER PLOPPEN DIE WEITEREN FRAGEN AUF BEI "JA"
+    # DYNAMISCHES AUFPLOPPEN BEI "JA"
     if symptome_ja_nein == "Ja":
         st.markdown("#### ⚠️ Details zu den Beschwerden")
         symptom_liste = [
@@ -122,7 +122,7 @@ elif page == "Mahlzeit tracken":
         ]
         selected_symptom = st.selectbox("Welches Hauptsymptom ist aufgetreten?", symptom_liste)
         intens = st.select_slider("Stärke der Reaktion (1 = kaum spürbar, 10 = extrem stark)", options=range(0, 11), value=3)
-        bemerkung = st.text_area("Zusätzliche Notizen")
+        bemerkung = st.text_area("Zusätzliche Notizen (z.B. Medikamente genommen?)")
     
     st.divider()
     
@@ -140,7 +140,8 @@ elif page == "Mahlzeit tracken":
                     "Intensität": intens, 
                     "Bemerkungen": bemerkung
                 })
-                st.success("Erfolgreich gespeichert!")
+                # Erfolgsmeldung, die auch nach dem st.rerun() für den Nutzer sichtbar bleibt
+                st.toast("🎉 Erfolgreich gespeichert!", icon="💾")
                 st.rerun()
             else:
                 st.error("Bitte gib ein, was du gegessen hast.")
@@ -191,7 +192,7 @@ elif page == "Übersicht & Grafik":
     else:
         st.info("Noch keine Daten vorhanden. Erfasse zuerst eine Mahlzeit!")
 
-# --- SEITE 4: GUT ZU WISSEN (Dropdown-Auswahl) ---
+# --- SEITE 4: GUT ZU WISSEN (Wieder als sauberes Dropdown) ---
 elif page == "Gut zu wissen":
     st.title("💡 Allergie-Lexikon")
     st.write("Wähle ein Allergen oder einen Auslöser aus dem Dropdown aus, um Details zu sehen:")
@@ -239,7 +240,7 @@ elif page == "Gut zu wissen":
         st.markdown(f"**🛒 Häufig enthalten in:**\n{details['Lebensmittel']}")
         st.info(f"**ℹ️ Gut zu wissen:** {details['Tipp']}")
 
-# --- SEITE 5: ARZT-MODUS (Mit Arzt-Bemerkungen) ---
+# --- SEITE 5: ARZT-MODUS (Mit Textfeld für PDF-Notizen) ---
 elif page == "Arzt-Modus":
     st.title("👨‍⚕️ Arzt-Modus")
     st.write("Bereite hier die Daten optimal für dein nächstes Arztgespräch vor.")
@@ -249,8 +250,8 @@ elif page == "Arzt-Modus":
     if data is not None and not data.empty:
         st.subheader("📝 Zusätzliche Bemerkungen für den Arzt")
         arzt_notiz = st.text_area(
-            "Schreibe hier Notizen, die ganz oben auf das PDF kommen sollen:",
-            placeholder="z.B. Fragen an den Arzt, aktuelle Medikation..."
+            "Schreibe hier Notizen, die ganz oben auf das PDF gedruckt werden sollen:",
+            placeholder="z.B. Fragen an den Arzt, Medikamente, die du nimmst, oder wann Beschwerden besonders stark sind..."
         )
         
         st.divider()
@@ -261,12 +262,14 @@ elif page == "Arzt-Modus":
             pdf = FPDF()
             pdf.add_page()
             
+            # Haupttitel
             pdf.set_font("Arial", 'B', 16)
             pdf.cell(190, 10, f"Allergie-Protokoll: {user_name}", ln=True, align='C')
             pdf.set_font("Arial", size=10)
             pdf.cell(190, 10, f"Erstellt am: {datetime.now().strftime('%d.%m.%Y')}", ln=True, align='C')
             pdf.ln(5)
             
+            # Freitext / Notiz einfügen, wenn ausgefüllt
             if arzt_notiz:
                 pdf.set_font("Arial", 'B', 11)
                 pdf.cell(190, 8, "Persoenliche Anmerkungen & Fragen an den Arzt:", ln=True)
@@ -275,13 +278,16 @@ elif page == "Arzt-Modus":
                 pdf.multi_cell(190, 5, notiz_safe)
                 pdf.ln(5)
 
+            # Trennlinie
             pdf.line(10, pdf.get_y(), 200, pdf.get_y())
             pdf.ln(5)
 
+            # Tabelle Überschrift
             pdf.set_font("Arial", 'B', 11)
-            pdf.cell(190, 8, "Erfasste Historie:", ln=True)
+            pdf.cell(190, 8, "Erfasste Historie (Ernaehrungs- und Symptomtagebuch):", ln=True)
             pdf.ln(2)
 
+            # Tabellen-Header formatieren
             pdf.set_fill_color(200, 220, 255)
             pdf.set_font("Arial", 'B', 10)
             pdf.cell(25, 8, "Datum", 1, 0, 'C', True)
@@ -290,6 +296,7 @@ elif page == "Arzt-Modus":
             pdf.cell(15, 8, "Intens.", 1, 0, 'C', True)
             pdf.cell(60, 8, "Bemerkung", 1, 1, 'C', True)
 
+            # Zeilen befüllen
             pdf.set_font("Arial", size=9)
             for _, row in data.iterrows():
                 datum_text = str(row.get('Datum', '')).encode('latin-1', 'replace').decode('latin-1')
@@ -315,6 +322,4 @@ elif page == "Arzt-Modus":
                 file_name=f"Allergie_Report_{user_name}.pdf",
                 mime="application/pdf"
             )
-            st.success("PDF wurde erfolgreich generiert!")
-    else:
-        st.warning("Noch keine Daten zum Exportieren vorhanden.")
+            st.success
