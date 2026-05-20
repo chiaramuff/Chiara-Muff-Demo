@@ -29,7 +29,12 @@ user_name = st.session_state.get('username')
 if 'nav_index' not in st.session_state:
     st.session_state.nav_index = 0
 
-options = ["Home / Tracken", "Übersicht & Grafik", "Gut zu wissen", "Arzt-Modus"]
+# Exakt die 5 gewohnten Seiten
+options = ["Home", "Mahlzeit tracken", "Übersicht & Grafik", "Gut zu wissen", "Arzt-Modus"]
+
+# Falls durch das Wechseln der Index kurz verwirrt war, fangen wir es hier ab
+if st.session_state.nav_index >= len(options):
+    st.session_state.nav_index = 0
 
 # --- 6. SIDEBAR ---
 with st.sidebar:
@@ -47,17 +52,33 @@ with st.sidebar:
 
 # --- 7. SEITEN-LOGIK ---
 
-# --- SEITE 1: HOME & DIREKTES TRACKEN ---
-if page == "Home / Tracken":
+# --- SEITE 1: HOME ---
+if page == "Home":
     st.title("Allergie-Tracker")
     st.subheader(f"Willkommen zurück, {user_name}! 👋")
     
-    if st.button("📊 Direkt zur Übersicht & Grafik springen", use_container_width=True):
-        st.session_state.nav_index = 1
-        st.rerun()
-        
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🍴 Mahlzeit erfassen", use_container_width=True):
+            st.session_state.nav_index = 1
+            st.rerun()
+    with col2:
+        if st.button("📊 Übersicht & Grafik", use_container_width=True):
+            st.session_state.nav_index = 2
+            st.rerun()
+            
     st.divider()
-    st.header("🍴 Neue Mahlzeit & Beschwerden erfassen")
+    data = load_tracker_data(dm, user_name)
+    if data is not None and not data.empty:
+        last = data.iloc[-1]
+        uhrzeit_str = last['Uhrzeit'] if 'Uhrzeit' in last else '--:--'
+        st.info(f"Dein letzter Eintrag: **{last['Mahlzeit']}** ({last['Datum']} um {uhrzeit_str})")
+    else:
+        st.write("Noch keine Einträge vorhanden.")
+
+# --- SEITE 2: MAHLZEIT TRACKEN (Mit aufploppenden Fragen bei 'Ja') ---
+elif page == "Mahlzeit tracken":
+    st.header("🍴 Neue Mahlzeit erfassen")
     
     col_date, col_time = st.columns(2)
     with col_date:
@@ -69,12 +90,15 @@ if page == "Home / Tracken":
         st.session_state.selected_time = t_val
     
     m_val = st.text_input("Was hast du gegessen / getrunken?")
+    
+    # Interaktive Abfrage
     symptome_ja_nein = st.radio("Traten Beschwerden / Symptome auf?", ["Nein", "Ja"], index=0)
     
     selected_symptom = "Keine Beschwerden"
     intens = 0
     bemerkung = ""
     
+    # HIER PLOPPEN DIE WEITEREN FRAGEN AUF BEI "JA"
     if symptome_ja_nein == "Ja":
         st.markdown("#### ⚠️ Details zu den Beschwerden")
         symptom_liste = [
@@ -98,9 +122,10 @@ if page == "Home / Tracken":
         ]
         selected_symptom = st.selectbox("Welches Hauptsymptom ist aufgetreten?", symptom_liste)
         intens = st.select_slider("Stärke der Reaktion (1 = kaum spürbar, 10 = extrem stark)", options=range(0, 11), value=3)
-        bemerkung = st.text_area("Zusätzliche Notizen (z.B. Wie lange nach dem Essen?, Medikamente genommen?)")
+        bemerkung = st.text_area("Zusätzliche Notizen")
     
     st.divider()
+    
     col_save, col_view = st.columns(2)
     with col_save:
         if st.button("💾 Eintrag speichern", use_container_width=True, type="primary"):
@@ -121,16 +146,16 @@ if page == "Home / Tracken":
                 st.error("Bitte gib ein, was du gegessen hast.")
                 
     with col_view:
-        if st.button("🔍 Abbrechen & Übersicht ansehen", use_container_width=True):
-            st.session_state.nav_index = 1
+        if st.button("🔍 Zur Übersicht springen", use_container_width=True):
+            st.session_state.nav_index = 2
             st.rerun()
 
-# --- SEITE 2: ÜBERSICHT & GRAFIK ---
+# --- SEITE 3: ÜBERSICHT & GRAFIK ---
 elif page == "Übersicht & Grafik":
     st.header("📊 Deine Analyse & Historie")
     
     if st.button("🍴 Neuen Eintrag hinzufügen", use_container_width=True):
-        st.session_state.nav_index = 0
+        st.session_state.nav_index = 1
         st.rerun()
         
     st.divider()
@@ -155,11 +180,7 @@ elif page == "Übersicht & Grafik":
             barmode='group' 
         )
         
-        fig.update_layout(
-            xaxis_title="Gegessene Mahlzeit",
-            yaxis_title="Reaktionsstärke (0-10)",
-            legend_title="Symptom-Typ"
-        )
+        fig.update_layout(xaxis_title="Gegessene Mahlzeit", yaxis_title="Reaktionsstärke (0-10)", legend_title="Symptom-Typ")
         st.plotly_chart(fig, use_container_width=True)
         
         st.divider()
@@ -168,9 +189,9 @@ elif page == "Übersicht & Grafik":
         avg_data.columns = ['Mahlzeit', 'Ø Intensität']
         st.table(avg_data)
     else:
-        st.info("Noch keine Daten vorhanden. Erfasse zuerst eine Mahlzeit auf der Startseite!")
+        st.info("Noch keine Daten vorhanden. Erfasse zuerst eine Mahlzeit!")
 
-# --- SEITE 3: GUT ZU WISSEN ---
+# --- SEITE 4: GUT ZU WISSEN (Dropdown-Auswahl) ---
 elif page == "Gut zu wissen":
     st.title("💡 Allergie-Lexikon")
     st.write("Wähle ein Allergen oder einen Auslöser aus dem Dropdown aus, um Details zu sehen:")
@@ -218,7 +239,7 @@ elif page == "Gut zu wissen":
         st.markdown(f"**🛒 Häufig enthalten in:**\n{details['Lebensmittel']}")
         st.info(f"**ℹ️ Gut zu wissen:** {details['Tipp']}")
 
-# --- SEITE 4: ARZT-MODUS (JETZT MIT GEZIELTEN NOTIZEN) ---
+# --- SEITE 5: ARZT-MODUS (Mit Arzt-Bemerkungen) ---
 elif page == "Arzt-Modus":
     st.title("👨‍⚕️ Arzt-Modus")
     st.write("Bereite hier die Daten optimal für dein nächstes Arztgespräch vor.")
@@ -227,14 +248,12 @@ elif page == "Arzt-Modus":
 
     if data is not None and not data.empty:
         st.subheader("📝 Zusätzliche Bemerkungen für den Arzt")
-        # HIER IST DIE NEUE FUNKTION: Das Textfeld für Arzt-Notizen
         arzt_notiz = st.text_area(
-            "Schreibe hier Notizen, die ganz oben auf das PDF kommen sollen (z.B. Fragen an den Arzt, aktuelle Medikamente):",
-            placeholder="z.B. Bitte um Abklärung bezüglich Histamin-Intoleranz. Die Beschwerden treten meistens abends auf..."
+            "Schreibe hier Notizen, die ganz oben auf das PDF kommen sollen:",
+            placeholder="z.B. Fragen an den Arzt, aktuelle Medikation..."
         )
         
         st.divider()
-        st.info("Generiere den PDF-Report inklusive deiner Historie und Notizen.")
         
         if st.button("PDF-Report erstellen", type="primary"):
             from fpdf import FPDF
@@ -242,32 +261,27 @@ elif page == "Arzt-Modus":
             pdf = FPDF()
             pdf.add_page()
             
-            # PDF Titel
             pdf.set_font("Arial", 'B', 16)
             pdf.cell(190, 10, f"Allergie-Protokoll: {user_name}", ln=True, align='C')
             pdf.set_font("Arial", size=10)
             pdf.cell(190, 10, f"Erstellt am: {datetime.now().strftime('%d.%m.%Y')}", ln=True, align='C')
             pdf.ln(5)
             
-            # Wenn eine Arzt-Notiz geschrieben wurde, drucken wir sie hier rein
             if arzt_notiz:
                 pdf.set_font("Arial", 'B', 11)
                 pdf.cell(190, 8, "Persoenliche Anmerkungen & Fragen an den Arzt:", ln=True)
                 pdf.set_font("Arial", size=10)
-                # Multi_cell erlaubt automatischen Zeilenumbruch bei langen Texten
                 notiz_safe = arzt_notiz.encode('latin-1', 'replace').decode('latin-1')
                 pdf.multi_cell(190, 5, notiz_safe)
                 pdf.ln(5)
 
-            pdf.line(10, pdf.get_y(), 200, pdf.get_y()) # Eine Trennlinie einfügen
+            pdf.line(10, pdf.get_y(), 200, pdf.get_y())
             pdf.ln(5)
 
-            # Tabelle Titel
             pdf.set_font("Arial", 'B', 11)
-            pdf.cell(190, 8, "Erfasste Historie (Ernaehrungs- und Symptomtagebuch):", ln=True)
+            pdf.cell(190, 8, "Erfasste Historie:", ln=True)
             pdf.ln(2)
 
-            # Tabelle Header
             pdf.set_fill_color(200, 220, 255)
             pdf.set_font("Arial", 'B', 10)
             pdf.cell(25, 8, "Datum", 1, 0, 'C', True)
@@ -276,7 +290,6 @@ elif page == "Arzt-Modus":
             pdf.cell(15, 8, "Intens.", 1, 0, 'C', True)
             pdf.cell(60, 8, "Bemerkung", 1, 1, 'C', True)
 
-            # Tabelleninhalt
             pdf.set_font("Arial", size=9)
             for _, row in data.iterrows():
                 datum_text = str(row.get('Datum', '')).encode('latin-1', 'replace').decode('latin-1')
@@ -302,6 +315,6 @@ elif page == "Arzt-Modus":
                 file_name=f"Allergie_Report_{user_name}.pdf",
                 mime="application/pdf"
             )
-            st.success("PDF wurde erfolgreich generiert! Nutze den Button oben zum Speichern.")
+            st.success("PDF wurde erfolgreich generiert!")
     else:
-        st.warning("Noch keine Daten zum Exportieren vorhanden. Tracke zuerst etwas auf der Startseite!")
+        st.warning("Noch keine Daten zum Exportieren vorhanden.")
