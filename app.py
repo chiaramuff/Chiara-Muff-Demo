@@ -29,10 +29,8 @@ user_name = st.session_state.get('username')
 if 'nav_index' not in st.session_state:
     st.session_state.nav_index = 0
 
-# Exakt die 5 gewohnten Seiten beibehalten
 options = ["Home", "Mahlzeit tracken", "Übersicht & Grafik", "Gut zu wissen", "Arzt-Modus"]
 
-# Schutz vor Index-Fehlern beim Versionswechsel
 if st.session_state.nav_index >= len(options):
     st.session_state.nav_index = 0
 
@@ -90,35 +88,23 @@ elif page == "Mahlzeit tracken":
         st.session_state.selected_time = t_val
     
     m_val = st.text_input("Was hast du gegessen / getrunken?")
-    
-    # Interaktive Abfrage: Bei "Ja" ploppen weitere Fragen auf
     symptome_ja_nein = st.radio("Traten Beschwerden / Symptome auf?", ["Nein", "Ja"], index=0)
     
     selected_symptom = "Keine Beschwerden"
     intens = 0
     bemerkung = ""
     
-    # DYNAMISCHES AUFPLOPPEN BEI "JA"
     if symptome_ja_nein == "Ja":
         st.markdown("#### ⚠️ Details zu den Beschwerden")
         symptom_liste = [
-            "Juckreiz (Mund/Rachen/Lippen)",
-            "Anschwellen der Zunge/Lippen",
-            "Kribbeln auf der Haut / Ausschlag",
-            "Quaddeln / Nesselsucht / Rötungen",
-            "Bauchschmerzen / Magenknurren",
-            "Blähungen / Völlegefühl",
-            "Krampfartige Schmerzen (Unterleib)",
-            "Übelkeit / Sodbrennen",
-            "Erbrechen",
-            "Durchfall",
-            "Atemnot / Pfeifender Atem / Asthma",
-            "Hustenreiz / Kratzen im Hals",
-            "Fliessschnupfen / Verstopfte Nase",
-            "Augenjucken / Tränende Augen",
-            "Kopfschmerzen / Migräne",
-            "Schwindel / Kreislaufbeschwerden / Schwäche",
-            "Müdigkeit (Extremer Leistungsknick)"
+            "Juckreiz (Mund/Rachen/Lippen)", "Anschwellen der Zunge/Lippen",
+            "Kribbeln auf der Haut / Ausschlag", "Quaddeln / Nesselsucht / Rötungen",
+            "Bauchschmerzen / Magenknurren", "Blähungen / Völlegefühl",
+            "Krampfartige Schmerzen (Unterleib)", "Übelkeit / Sodbrennen",
+            "Erbrechen", "Durchfall", "Atemnot / Pfeifender Atem / Asthma",
+            "Hustenreiz / Kratzen im Hals", "Fliessschnupfen / Verstopfte Nase",
+            "Augenjucken / Tränende Augen", "Kopfschmerzen / Migräne",
+            "Schwindel / Kreislaufbeschwerden / Schwäche", "Müdigkeit (Extremer Leistungsknick)"
         ]
         selected_symptom = st.selectbox("Welches Hauptsymptom ist aufgetreten?", symptom_liste)
         intens = st.select_slider("Stärke der Reaktion (1 = kaum spürbar, 10 = extrem stark)", options=range(0, 11), value=3)
@@ -131,16 +117,11 @@ elif page == "Mahlzeit tracken":
         if st.button("💾 Eintrag speichern", use_container_width=True, type="primary"):
             if m_val:
                 save_to_csv(dm, {
-                    "Nutzer": user_name, 
-                    "Datum": d_val.strftime('%Y-%m-%d'),
-                    "Uhrzeit": t_val.strftime('%H:%M'), 
-                    "Mahlzeit": m_val,
-                    "Symptome": symptome_ja_nein, 
-                    "Details": selected_symptom,
-                    "Intensität": intens, 
-                    "Bemerkungen": bemerkung
+                    "Nutzer": user_name, "Datum": d_val.strftime('%Y-%m-%d'),
+                    "Uhrzeit": t_val.strftime('%H:%M'), "Mahlzeit": m_val,
+                    "Symptome": symptome_ja_nein, "Details": selected_symptom,
+                    "Intensität": intens, "Bemerkungen": bemerkung
                 })
-                # Erfolgsmeldung, die auch nach dem st.rerun() für den Nutzer sichtbar bleibt
                 st.toast("🎉 Erfolgreich gespeichert!", icon="💾")
                 st.rerun()
             else:
@@ -151,13 +132,25 @@ elif page == "Mahlzeit tracken":
             st.session_state.nav_index = 2
             st.rerun()
 
-# --- SEITE 3: ÜBERSICHT & GRAFIK ---
+# --- SEITE 3: ÜBERSICHT & GRAFIK (ZUSÄTZLICHE DIREKT-NAVIBUTTONS) ---
 elif page == "Übersicht & Grafik":
     st.header("📊 Deine Analyse & Historie")
     
+    # Gewohnter Button nach oben verschoben
     if st.button("🍴 Neuen Eintrag hinzufügen", use_container_width=True):
         st.session_state.nav_index = 1
         st.rerun()
+        
+    # NEU: Direktsprung-Möglichkeiten
+    col_nav1, col_nav2 = st.columns(2)
+    with col_nav1:
+        if st.button("💡 Zum Allergie-Lexikon wechseln", use_container_width=True):
+            st.session_state.nav_index = 3
+            st.rerun()
+    with col_nav2:
+        if st.button("👨‍⚕️ Zum Arzt-Modus wechseln", use_container_width=True):
+            st.session_state.nav_index = 4
+            st.rerun()
         
     st.divider()
     data = load_tracker_data(dm, user_name)
@@ -171,16 +164,13 @@ elif page == "Übersicht & Grafik":
         st.subheader("Welche Mahlzeiten verursachen Probleme?")
         
         fig = px.bar(
-            data,
-            x='Mahlzeit',
-            y='Intensität',
+            data, x='Mahlzeit', y='Intensität',
             color='Details' if 'Details' in data.columns else None, 
             title="Symptom-Intensität pro Mahlzeit",
             labels={'Intensität': 'Stärke der Reaktion', 'Details': 'Symptom'},
             hover_data=['Datum', 'Bemerkungen'] if 'Bemerkungen' in data.columns else ['Datum'],
             barmode='group' 
         )
-        
         fig.update_layout(xaxis_title="Gegessene Mahlzeit", yaxis_title="Reaktionsstärke (0-10)", legend_title="Symptom-Typ")
         st.plotly_chart(fig, use_container_width=True)
         
@@ -192,46 +182,69 @@ elif page == "Übersicht & Grafik":
     else:
         st.info("Noch keine Daten vorhanden. Erfasse zuerst eine Mahlzeit!")
 
-# --- SEITE 4: GUT ZU WISSEN (Wieder als sauberes Dropdown) ---
+# --- SEITE 4: GUT ZU WISSEN (MIT NAVIGATION UND INTELLIGENTER VERKNÜPFUNG) ---
 elif page == "Gut zu wissen":
     st.title("💡 Allergie-Lexikon")
-    st.write("Wähle ein Allergen oder einen Auslöser aus dem Dropdown aus, um Details zu sehen:")
+    
+    # NEU: Buttons um auf Home oder Eintrag erfassen zu springen
+    col_lex1, col_lex2 = st.columns(2)
+    with col_lex1:
+        if st.button("🏠 Zur Startseite (Home)", use_container_width=True):
+            st.session_state.nav_index = 0
+            st.rerun()
+    with col_lex2:
+        if st.button("🍴 Neue Mahlzeit / Eintrag erfassen", use_container_width=True):
+            st.session_state.nav_index = 1
+            st.rerun()
+            
+    st.divider()
+    st.write("Wähle ein Allergen aus dem Dropdown aus, um Infos und deine persönlichen Übereinstimmungen zu sehen:")
 
+    # Definition der Suchbegriffe für die Verknüpfung
     allergien_info = {
-        "Bitte auswählen...": {"Symptome": "-", "Lebensmittel": "-", "Tipp": "Wähle ein Allergen aus der Liste aus."},
+        "Bitte auswählen...": {
+            "Symptome": "-", "Lebensmittel": "-", "Tipp": "Wähle ein Allergen aus der Liste aus.", "Keywords": []
+        },
         "Laktose (Milchzucker)": {
             "Symptome": "Blähungen, Bauchschmerzen, krampfartige Magenbeschwerden, wässriger Durchfall.",
-            "Lebensmittel": "Kuhmilch, Joghurt, Quark, Sahne, Milchschokolade, viele Fertiggerichte und Backwaren.",
-            "Tipp": "Achte auf 'Molkenpulver' oder 'Magermilchpulver' in den Zutaten. Laktase-Tabletten können helfen."
+            "Lebensmittel": "Kuhmilch, Joghurt, Quark, Sahne, Milchschokolade, Käse.",
+            "Tipp": "Achte auf 'Molkenpulver' oder 'Magermilchpulver' in den Zutaten.",
+            "Keywords": ["milch", "joghurt", "quark", "sahne", "schokolade", "käse", "butter", "laktose"]
         },
         "Fruktose (Fruchtzucker)": {
-            "Symptome": "Blähbauch ('Schwangerschaftsbauch'), Bauchschmerzen, weicher Stuhl bis Durchfall, Übelkeit.",
-            "Lebensmittel": "Äpfel, Birnen, Kirschen, Trockenobst, Honig, Softdrinks (HFCS-Sirup), Süssigkeiten.",
-            "Tipp": "Haushaltszucker wird oft besser vertragen als reine Fruktose. Traubenzucker hilft bei der Aufnahme."
+            "Symptome": "Blähbauch, Bauchschmerzen, weicher Stuhl bis Durchfall, Übelkeit.",
+            "Lebensmittel": "Äpfel, Birnen, Kirschen, Trockenobst, Honig, Softdrinks, Süssigkeiten.",
+            "Tipp": "Traubenzucker hilft dem Darm temporär bei der Aufnahme von Fruktose.",
+            "Keywords": ["apfel", "birne", "kirsche", "obst", "frucht", "honig", "saft", "cola", "fruktose"]
         },
         "Histamin (Intoleranz)": {
-            "Symptome": "Flushing (Hautrötung/Heisswerden im Gesicht), Kopfschmerzen/Migräne, Fliessschnupfen, Herzrasen.",
+            "Symptome": "Flushing (Hautrötung), Kopfschmerzen/Migräne, Fliessschnupfen, Herzrasen.",
             "Lebensmittel": "Gereifter Käse, Rotwein, Salami, Tomaten, Meeresfrüchte, Sauerkraut, Schokolade.",
-            "Tipp": "Histamin baut sich in Lebensmitteln auf, je älter oder gereifter sie sind. Immer fangfrisch essen!"
+            "Tipp": "Histamin baut sich auf, je älter oder gereifter Lebensmittel sind.",
+            "Keywords": ["wein", "salami", "tomate", "fisch", "sauerkraut", "schokolade", "käse", "histamin"]
         },
         "Gluten / Zöliakie": {
-            "Symptome": "Chronischer Durchfall, Gewichtsverlust, Nährstoffmangel, extreme Müdigkeit, Blähungen.",
-            "Lebensmittel": "Weizen, Roggen, Gerste, Dinkel, Pizza, Pasta, Brot, Bier, konventionelle Saucen.",
-            "Tipp": "Zöliakie ist eine Autoimmunerkrankung, keine reine Allergie. Hier hilft nur strikter Verzicht."
+            "Symptome": "Chronischer Durchfall, Gewichtsverlust, Nährstoffmangel, extreme Müdigkeit.",
+            "Lebensmittel": "Weizen, Roggen, Gerste, Dinkel, Pizza, Pasta, Brot, Bier.",
+            "Tipp": "Zöliakie ist eine Autoimmunerkrankung. Hier hilft nur strikter Verzicht.",
+            "Keywords": ["weizen", "brot", "nudeln", "pasta", "pizza", "bier", "teig", "dinkel", "gluten"]
         },
         "Nüsse & Schalenfrüchte": {
-            "Symptome": "Sofortiges Jucken im Mund, Anschwellen von Atemwegen, Nesselsucht, anaphylaktischer Schock.",
-            "Lebensmittel": "Haselnüsse, Walnüsse, Cashews, Mandeln, Pesto, Müsli, Backwaren, Nougat-Aufstrich.",
-            "Tipp": "Spurenkennzeichnungen ('Kann Nüsse enthalten') müssen bei hochgradigen Allergikern beachtet werden."
+            "Symptome": "Sofortiges Jucken im Mund, Anschwellen von Atemwegen, Nesselsucht.",
+            "Lebensmittel": "Haselnüsse, Walnüsse, Cashews, Mandeln, Pesto, Müsli, Backwaren.",
+            "Tipp": "Spurenkennzeichnungen müssen bei hochgradigen Allergikern beachtet werden.",
+            "Keywords": ["nuss", "nüsse", "haselnuss", "walnuss", "cashew", "mandel", "pesto", "müsli"]
         },
         "Erdnüsse": {
-            "Symptome": "Massiver Juckreiz, Atemnot, Schwellungen, extrem hohes Risiko für allergischen Schock.",
-            "Lebensmittel": "Erdnussbutter, Erdnussöl, asiatische Gerichte (Saucen), Knabberzeug/Flips.",
-            "Tipp": "Erdnüsse gehören botanisch zu den Hülsenfrüchten, nicht zu den echten Baumnüssen!"
+            "Symptome": "Massiver Juckreiz, Atemnot, Schwellungen, extremes Anaphylaxie-Risiko.",
+            "Lebensmittel": "Erdnussbutter, Erdnussöl, asiatische Saucen, Knabberzeug/Flips.",
+            "Tipp": "Erdnüsse gehören botanisch zu den Hülsenfrüchten, nicht zu den Baumnüssen.",
+            "Keywords": ["erdnuss", "flips", "erdnüsse", "peanut"]
         }
     }
 
     wahl = st.selectbox("Auslöser auswählen:", list(allergien_info.keys()))
+    
     if wahl != "Bitte auswählen...":
         details = allergien_info[wahl]
         st.divider()
@@ -239,8 +252,27 @@ elif page == "Gut zu wissen":
         st.markdown(f"**🔴 Typische Symptome:**\n{details['Symptome']}")
         st.markdown(f"**🛒 Häufig enthalten in:**\n{details['Lebensmittel']}")
         st.info(f"**ℹ️ Gut zu wissen:** {details['Tipp']}")
+        
+        # NEU: DIE VERKNÜPFUNG MIT DEINEN TAGEBUCH-DATEN
+        st.divider()
+        st.subheader("🔍 Abgleich mit deinem Tagebuch")
+        data = load_tracker_data(dm, user_name)
+        
+        if data is not None and not data.empty and details["Keywords"]:
+            # Filtere das Tagebuch nach Mahlzeiten, die die Keywords enthalten (Groß-/Kleinschreibung ignoriert)
+            pattern = '|'.join(details["Keywords"])
+            treffer = data[data['Mahlzeit'].str.contains(pattern, case=False, na=False)]
+            
+            if not treffer.empty:
+                st.warning(f"Folgende Einträge aus deinem Tagebuch enthalten potenzielle Auslöser für **{wahl}**:")
+                display_treffer = treffer.drop(columns=["Nutzer"]) if "Nutzer" in treffer.columns else treffer
+                st.dataframe(display_treffer, use_container_width=True)
+            else:
+                st.success(f"Super! In deinem Tagebuch wurden bisher keine Mahlzeiten gefunden, die offensichtlich mit **{wahl}** verknüpft sind.")
+        else:
+            st.info("Noch keine Tagebucheinträge zum Abgleichen vorhanden.")
 
-# --- SEITE 5: ARZT-MODUS (Mit Textfeld für PDF-Notizen) ---
+# --- SEITE 5: ARZT-MODUS ---
 elif page == "Arzt-Modus":
     st.title("👨‍⚕️ Arzt-Modus")
     st.write("Bereite hier die Daten optimal für dein nächstes Arztgespräch vor.")
@@ -251,7 +283,7 @@ elif page == "Arzt-Modus":
         st.subheader("📝 Zusätzliche Bemerkungen für den Arzt")
         arzt_notiz = st.text_area(
             "Schreibe hier Notizen, die ganz oben auf das PDF gedruckt werden sollen:",
-            placeholder="z.B. Fragen an den Arzt, Medikamente, die du nimmst, oder wann Beschwerden besonders stark sind..."
+            placeholder="z.B. Fragen an den Arzt, Medikamente, die du nimmst..."
         )
         
         st.divider()
@@ -262,14 +294,12 @@ elif page == "Arzt-Modus":
             pdf = FPDF()
             pdf.add_page()
             
-            # Haupttitel
             pdf.set_font("Arial", 'B', 16)
             pdf.cell(190, 10, f"Allergie-Protokoll: {user_name}", ln=True, align='C')
             pdf.set_font("Arial", size=10)
             pdf.cell(190, 10, f"Erstellt am: {datetime.now().strftime('%d.%m.%Y')}", ln=True, align='C')
             pdf.ln(5)
             
-            # Freitext / Notiz einfügen, wenn ausgefüllt
             if arzt_notiz:
                 pdf.set_font("Arial", 'B', 11)
                 pdf.cell(190, 8, "Persoenliche Anmerkungen & Fragen an den Arzt:", ln=True)
@@ -278,16 +308,13 @@ elif page == "Arzt-Modus":
                 pdf.multi_cell(190, 5, notiz_safe)
                 pdf.ln(5)
 
-            # Trennlinie
             pdf.line(10, pdf.get_y(), 200, pdf.get_y())
             pdf.ln(5)
 
-            # Tabelle Überschrift
             pdf.set_font("Arial", 'B', 11)
             pdf.cell(190, 8, "Erfasste Historie (Ernaehrungs- und Symptomtagebuch):", ln=True)
             pdf.ln(2)
 
-            # Tabellen-Header formatieren
             pdf.set_fill_color(200, 220, 255)
             pdf.set_font("Arial", 'B', 10)
             pdf.cell(25, 8, "Datum", 1, 0, 'C', True)
@@ -296,7 +323,6 @@ elif page == "Arzt-Modus":
             pdf.cell(15, 8, "Intens.", 1, 0, 'C', True)
             pdf.cell(60, 8, "Bemerkung", 1, 1, 'C', True)
 
-            # Zeilen befüllen
             pdf.set_font("Arial", size=9)
             for _, row in data.iterrows():
                 datum_text = str(row.get('Datum', '')).encode('latin-1', 'replace').decode('latin-1')
@@ -322,4 +348,6 @@ elif page == "Arzt-Modus":
                 file_name=f"Allergie_Report_{user_name}.pdf",
                 mime="application/pdf"
             )
-            st.success
+            st.success("PDF wurde erfolgreich generiert!")
+    else:
+        st.warning("Noch keine Daten vorhanden, um einen Report zu erstellen.")
