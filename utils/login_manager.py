@@ -22,17 +22,27 @@ class LoginManager:
 
     def _load_credentials(self):
         data = self.dm.load_json_data(self.auth_credentials_file)
+        
+        # Falls die Datei komplett leer oder ungültig ist, Grundgerüst bauen
         if not data or 'usernames' not in data:
-            return {'usernames': {}}
+            data = {'usernames': {}}
+            
+        # WICHTIG: Moderne Versionen der Library verlangen diese Keys zwingend!
+        if 'cookie' not in data:
+            data['cookie'] = {
+                'expiry_days': 30,
+                'key': self.auth_cookie_key,
+                'name': self.auth_cookie_name
+            }
+        if 'preauthorized' not in data:
+            data['preauthorized'] = {'emails': []}
+            
         return data
-
-    def _save_credentials(self):
-        self.dm.save_json_data(self.auth_credentials, self.auth_credentials_file)
 
     def login_register(self):
         self.auth_credentials = self._load_credentials()
         
-        # Initialisierung des Authenticators
+        # Initialisierung des Authenticators mit dem vollständigen Daten-Gerüst
         self.authenticator = stauth.Authenticate(
             self.auth_credentials,
             self.auth_cookie_name,
@@ -43,7 +53,7 @@ class LoginManager:
         login_tab, register_tab = st.tabs(["Anmelden", "Konto erstellen"])
 
         with login_tab:
-            # Login-Feld anzeigen
+            # Zeigt die Felder für Username & Passwort an
             self.authenticator.login(location='main')
             
             if st.session_state.get("authentication_status"):
@@ -60,15 +70,14 @@ class LoginManager:
             
             if st.button("Registrieren"):
                 if new_email and new_username and new_pw:
-                    # Wir speichern das Passwort für diesen Test einfach direkt
-                    # Um den 'Hasher'-Fehler komplett zu umgehen
                     if 'usernames' not in self.auth_credentials:
                         self.auth_credentials['usernames'] = {}
                     
+                    # Passwort direkt im Klartext abspeichern um Hasher-Inkompatibilitäten zu umgehen
                     self.auth_credentials['usernames'][new_username] = {
                         "email": new_email,
                         "name": new_name,
-                        "password": new_pw  # Passwort direkt speichern
+                        "password": new_pw
                     }
                     
                     self.dm.save_json_data(self.auth_credentials, self.auth_credentials_file)

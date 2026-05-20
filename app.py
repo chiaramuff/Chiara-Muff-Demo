@@ -4,7 +4,7 @@ from datetime import datetime
 import plotly.express as px
 
 # 1. Konfiguration
-st.set_page_config(page_title="Allergie-Tracker Pro", layout="centered")
+st.set_page_config(page_title="Allergie-Tracker", layout="centered")
 
 # 2. Importe
 from utils.data_manager import DataManager
@@ -52,7 +52,7 @@ with st.sidebar:
 
 # --- SEITE 1: HOME (SCHÖNER GESTALTET) ---
 if page == "Home":
-    st.markdown(f"<h1 style='text-align: center; color: #FF4B4B;'>🛡️ Allergie-Tracker Pro</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h1 style='text-align: center; color: #FF4B4B;'>Allergie-Tracker</h1>", unsafe_allow_html=True)
     st.markdown(f"<h3 style='text-align: center;'>Hallo {user_name}, schön bist du da! 👋</h3>", unsafe_allow_html=True)
     st.write("")
 
@@ -60,40 +60,26 @@ if page == "Home":
     data = load_tracker_data(dm, user_name)
     anzahl_eintraege = len(data) if data is not None else 0
 
-    # Schöne Dashboard-Karten (Metriken)
-    st.markdown("#### 📊 Dein aktueller Status")
-    col_stat1, col_stat2 = st.columns(2)
-    with col_stat1:
-        st.metric(label="Gesamte Einträge", value=anzahl_eintraege, delta="Aktiv dokumentiert")
-    with col_stat2:
-        if anzahl_eintraege > 0 and "Intensität" in data.columns:
-            letzte_reaktion = data.iloc[-1]["Intensität"]
-            st.metric(label="Letzte Reaktionsstärke", value=f"{letzte_reaktion} / 10", 
-                      delta="Warnstufe" if letzte_reaktion > 4 else "Stabil", 
-                      delta_color="inverse" if letzte_reaktion > 4 else "normal")
-        else:
-            st.metric(label="Letzte Reaktionsstärke", value="--", delta="Keine Daten")
-
     st.write("")
-    st.markdown("#### 🎯 Schnellauswahl – Was möchtest du tun?")
+    st.markdown("####  Schnellauswahl – Was möchtest du tun?")
     
     # Interaktive Buttons mit Spalten-Layout
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
-        st.markdown("<div style='padding: 5px; text-align: center; font-weight: bold;'>🍴 Ernährungstagebuch</div>", unsafe_allow_html=True)
-        if st.button("✨ Mahlzeit & Symptom erfassen", use_container_width=True, type="primary"):
+        st.markdown("<div style='padding: 5px; text-align: center; font-weight: bold;'> Ernährungstagebuch</div>", unsafe_allow_html=True)
+        if st.button(" Mahlzeit & Symptom erfassen", use_container_width=True, type="primary"):
             st.session_state.nav_index = 1
             st.rerun()
     with col_btn2:
-        st.markdown("<div style='padding: 5px; text-align: center; font-weight: bold;'>📈 Auswertungen</div>", unsafe_allow_html=True)
-        if st.button("📊 Diagramme & Historie ansehen", use_container_width=True):
+        st.markdown("<div style='padding: 5px; text-align: center; font-weight: bold;'> Auswertungen</div>", unsafe_allow_html=True)
+        if st.button(" Diagramme & Historie ansehen", use_container_width=True):
             st.session_state.nav_index = 2
             st.rerun()
             
     st.divider()
     
     # Letzter Eintrag hübsch verpackt in einer Info-Box
-    st.markdown("#### 🕒 Letzte Aktivität")
+    st.markdown("####  Letzte Aktivität")
     if data is not None and not data.empty:
         last = data.iloc[-1]
         uhrzeit_str = last['Uhrzeit'] if 'Uhrzeit' in last else '--:--'
@@ -105,7 +91,7 @@ if page == "Home":
         **Symptome gemeldet?** {last['Symptome']} (Typ: *{last['Details']}*, Intensität: *{last['Intensität']}/10*)
         """)
     else:
-        st.warning("📋 Du hast noch keine Einträge erfasst. Klicke oben auf den roten Button, um dein erstes Protokoll zu starten!")
+        st.warning(" Du hast noch keine Einträge erfasst. Klicke oben auf den roten Button, um dein erstes Protokoll zu starten!")
 
 # --- SEITE 2: MAHLZEIT TRACKEN ---
 elif page == "Mahlzeit tracken":
@@ -128,7 +114,7 @@ elif page == "Mahlzeit tracken":
     bemerkung = ""
     
     if symptome_ja_nein == "Ja":
-        st.markdown("#### ⚠️ Details zu den Beschwerden")
+        st.markdown("####  Details zu den Beschwerden")
         symptom_liste = [
             "Juckreiz (Mund/Rachen/Lippen)", "Anschwellen der Zunge/Lippen",
             "Kribbeln auf der Haut / Ausschlag", "Quaddeln / Nesselsucht / Rötungen",
@@ -155,19 +141,19 @@ elif page == "Mahlzeit tracken":
                     "Symptome": symptome_ja_nein, "Details": selected_symptom,
                     "Intensität": intens, "Bemerkungen": bemerkung
                 })
-                st.toast("🎉 Erfolgreich gespeichert!", icon="💾")
+                st.toast(" Erfolgreich gespeichert!", icon="💾")
                 st.rerun()
             else:
                 st.error("Bitte gib ein, was du gegessen hast.")
                 
     with col_view:
-        if st.button("🔍 Zur Übersicht springen", use_container_width=True):
+        if st.button(" Zur Übersicht springen", use_container_width=True):
             st.session_state.nav_index = 2
             st.rerun()
 
 # --- SEITE 3: ÜBERSICHT & GRAFIK ---
 elif page == "Übersicht & Grafik":
-    st.header("📊 Deine Analyse & Historie")
+    st.header(" Deine Analyse & Historie")
     
     if st.button("🍴 Neuen Eintrag hinzufügen", use_container_width=True):
         st.session_state.nav_index = 1
@@ -175,11 +161,11 @@ elif page == "Übersicht & Grafik":
         
     col_nav1, col_nav2 = st.columns(2)
     with col_nav1:
-        if st.button("💡 Zum Allergie-Lexikon wechseln", use_container_width=True):
+        if st.button("Gut zu wissen", use_container_width=True):
             st.session_state.nav_index = 3
             st.rerun()
     with col_nav2:
-        if st.button("👨‍⚕️ Zum Arzt-Modus wechseln", use_container_width=True):
+        if st.button(" Zum Arzt-Modus wechseln", use_container_width=True):
             st.session_state.nav_index = 4
             st.rerun()
         
@@ -215,21 +201,21 @@ elif page == "Übersicht & Grafik":
 
 # --- SEITE 4: GUT ZU WISSEN (MIT NEUEM ARZT-BUTTON & VERKNÜPFUNG) ---
 elif page == "Gut zu wissen":
-    st.title("💡 Allergie-Lexikon")
+    st.title(" Gut zu wissen")
     
     # JETZT MIT 3 SPALTEN FÜR DEN NEUEN ARZT-BUTTON
     col_lex1, col_lex2, col_lex3 = st.columns(3)
     with col_lex1:
-        if st.button("🏠 Startseite (Home)", use_container_width=True):
+        if st.button(" Startseite (Home)", use_container_width=True):
             st.session_state.nav_index = 0
             st.rerun()
     with col_lex2:
-        if st.button("🍴 Eintrag erfassen", use_container_width=True):
+        if st.button(" Eintrag erfassen", use_container_width=True):
             st.session_state.nav_index = 1
             st.rerun()
     with col_lex3:
         # HIER IST DER NEUE BUTTON ZUR ARZT-SEITE
-        if st.button("👨‍⚕️ Zum Arzt-Modus", use_container_width=True):
+        if st.button(" Zum Arzt-Modus", use_container_width=True):
             st.session_state.nav_index = 4
             st.rerun()
             
@@ -284,12 +270,12 @@ elif page == "Gut zu wissen":
         details = allergien_info[wahl]
         st.divider()
         st.subheader(f"Ergebnisse für: {wahl}")
-        st.markdown(f"**🔴 Typische Symptome:**\n{details['Symptome']}")
-        st.markdown(f"**🛒 Häufig enthalten in:**\n{details['Lebensmittel']}")
-        st.info(f"**ℹ️ Gut zu wissen:** {details['Tipp']}")
+        st.markdown(f"** Typische Symptome:**\n{details['Symptome']}")
+        st.markdown(f"** Häufig enthalten in:**\n{details['Lebensmittel']}")
+        st.info(f"** Gut zu wissen:** {details['Tipp']}")
         
         st.divider()
-        st.subheader("🔍 Abgleich mit deinem Tagebuch")
+        st.subheader(" Abgleich mit deinem Tagebuch")
         data = load_tracker_data(dm, user_name)
         
         if data is not None and not data.empty and details["Keywords"]:
@@ -307,13 +293,13 @@ elif page == "Gut zu wissen":
 
 # --- SEITE 5: ARZT-MODUS ---
 elif page == "Arzt-Modus":
-    st.title("👨‍⚕️ Arzt-Modus")
+    st.title(" Arzt-Modus")
     st.write("Bereite hier die Daten optimal für dein nächstes Arztgespräch vor.")
 
     data = load_tracker_data(dm, user_name)
 
     if data is not None and not data.empty:
-        st.subheader("📝 Zusätzliche Bemerkungen für den Arzt")
+        st.subheader(" Zusätzliche Bemerkungen für den Arzt")
         arzt_notiz = st.text_area(
             "Schreibe hier Notizen, die ganz oben auf das PDF gedruckt werden sollen:",
             placeholder="z.B. Fragen an den Arzt, Medikamente, die du nimmst..."
