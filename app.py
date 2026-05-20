@@ -50,29 +50,62 @@ with st.sidebar:
 
 # --- 7. SEITEN-LOGIK ---
 
-# --- SEITE 1: HOME ---
+# --- SEITE 1: HOME (SCHÖNER GESTALTET) ---
 if page == "Home":
-    st.title("Allergie-Tracker")
-    st.subheader(f"Willkommen zurück, {user_name}! 👋")
+    st.markdown(f"<h1 style='text-align: center; color: #FF4B4B;'>🛡️ Allergie-Tracker Pro</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='text-align: center;'>Hallo {user_name}, schön bist du da! 👋</h3>", unsafe_allow_html=True)
+    st.write("")
+
+    # Daten vorab laden für Statistiken auf der Home-Seite
+    data = load_tracker_data(dm, user_name)
+    anzahl_eintraege = len(data) if data is not None else 0
+
+    # Schöne Dashboard-Karten (Metriken)
+    st.markdown("#### 📊 Dein aktueller Status")
+    col_stat1, col_stat2 = st.columns(2)
+    with col_stat1:
+        st.metric(label="Gesamte Einträge", value=anzahl_eintraege, delta="Aktiv dokumentiert")
+    with col_stat2:
+        if anzahl_eintraege > 0 and "Intensität" in data.columns:
+            letzte_reaktion = data.iloc[-1]["Intensität"]
+            st.metric(label="Letzte Reaktionsstärke", value=f"{letzte_reaktion} / 10", 
+                      delta="Warnstufe" if letzte_reaktion > 4 else "Stabil", 
+                      delta_color="inverse" if letzte_reaktion > 4 else "normal")
+        else:
+            st.metric(label="Letzte Reaktionsstärke", value="--", delta="Keine Daten")
+
+    st.write("")
+    st.markdown("#### 🎯 Schnellauswahl – Was möchtest du tun?")
     
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🍴 Mahlzeit erfassen", use_container_width=True):
+    # Interaktive Buttons mit Spalten-Layout
+    col_btn1, col_btn2 = st.columns(2)
+    with col_btn1:
+        st.markdown("<div style='padding: 5px; text-align: center; font-weight: bold;'>🍴 Ernährungstagebuch</div>", unsafe_allow_html=True)
+        if st.button("✨ Mahlzeit & Symptom erfassen", use_container_width=True, type="primary"):
             st.session_state.nav_index = 1
             st.rerun()
-    with col2:
-        if st.button("📊 Übersicht & Grafik", use_container_width=True):
+    with col_btn2:
+        st.markdown("<div style='padding: 5px; text-align: center; font-weight: bold;'>📈 Auswertungen</div>", unsafe_allow_html=True)
+        if st.button("📊 Diagramme & Historie ansehen", use_container_width=True):
             st.session_state.nav_index = 2
             st.rerun()
             
     st.divider()
-    data = load_tracker_data(dm, user_name)
+    
+    # Letzter Eintrag hübsch verpackt in einer Info-Box
+    st.markdown("#### 🕒 Letzte Aktivität")
     if data is not None and not data.empty:
         last = data.iloc[-1]
         uhrzeit_str = last['Uhrzeit'] if 'Uhrzeit' in last else '--:--'
-        st.info(f"Dein letzter Eintrag: **{last['Mahlzeit']}** ({last['Datum']} um {uhrzeit_str})")
+        
+        # Visueller Container für den letzten Eintrag
+        st.info(f"""
+        **Speise:** {last['Mahlzeit']}  
+        **Zeitpunkt:** {last['Datum']} um {uhrzeit_str} Uhr  
+        **Symptome gemeldet?** {last['Symptome']} (Typ: *{last['Details']}*, Intensität: *{last['Intensität']}/10*)
+        """)
     else:
-        st.write("Noch keine Einträge vorhanden.")
+        st.warning("📋 Du hast noch keine Einträge erfasst. Klicke oben auf den roten Button, um dein erstes Protokoll zu starten!")
 
 # --- SEITE 2: MAHLZEIT TRACKEN ---
 elif page == "Mahlzeit tracken":
@@ -132,16 +165,14 @@ elif page == "Mahlzeit tracken":
             st.session_state.nav_index = 2
             st.rerun()
 
-# --- SEITE 3: ÜBERSICHT & GRAFIK (ZUSÄTZLICHE DIREKT-NAVIBUTTONS) ---
+# --- SEITE 3: ÜBERSICHT & GRAFIK ---
 elif page == "Übersicht & Grafik":
     st.header("📊 Deine Analyse & Historie")
     
-    # Gewohnter Button nach oben verschoben
     if st.button("🍴 Neuen Eintrag hinzufügen", use_container_width=True):
         st.session_state.nav_index = 1
         st.rerun()
         
-    # NEU: Direktsprung-Möglichkeiten
     col_nav1, col_nav2 = st.columns(2)
     with col_nav1:
         if st.button("💡 Zum Allergie-Lexikon wechseln", use_container_width=True):
@@ -182,25 +213,29 @@ elif page == "Übersicht & Grafik":
     else:
         st.info("Noch keine Daten vorhanden. Erfasse zuerst eine Mahlzeit!")
 
-# --- SEITE 4: GUT ZU WISSEN (MIT NAVIGATION UND INTELLIGENTER VERKNÜPFUNG) ---
+# --- SEITE 4: GUT ZU WISSEN (MIT NEUEM ARZT-BUTTON & VERKNÜPFUNG) ---
 elif page == "Gut zu wissen":
     st.title("💡 Allergie-Lexikon")
     
-    # NEU: Buttons um auf Home oder Eintrag erfassen zu springen
-    col_lex1, col_lex2 = st.columns(2)
+    # JETZT MIT 3 SPALTEN FÜR DEN NEUEN ARZT-BUTTON
+    col_lex1, col_lex2, col_lex3 = st.columns(3)
     with col_lex1:
-        if st.button("🏠 Zur Startseite (Home)", use_container_width=True):
+        if st.button("🏠 Startseite (Home)", use_container_width=True):
             st.session_state.nav_index = 0
             st.rerun()
     with col_lex2:
-        if st.button("🍴 Neue Mahlzeit / Eintrag erfassen", use_container_width=True):
+        if st.button("🍴 Eintrag erfassen", use_container_width=True):
             st.session_state.nav_index = 1
+            st.rerun()
+    with col_lex3:
+        # HIER IST DER NEUE BUTTON ZUR ARZT-SEITE
+        if st.button("👨‍⚕️ Zum Arzt-Modus", use_container_width=True):
+            st.session_state.nav_index = 4
             st.rerun()
             
     st.divider()
     st.write("Wähle ein Allergen aus dem Dropdown aus, um Infos und deine persönlichen Übereinstimmungen zu sehen:")
 
-    # Definition der Suchbegriffe für die Verknüpfung
     allergien_info = {
         "Bitte auswählen...": {
             "Symptome": "-", "Lebensmittel": "-", "Tipp": "Wähle ein Allergen aus der Liste aus.", "Keywords": []
@@ -253,13 +288,11 @@ elif page == "Gut zu wissen":
         st.markdown(f"**🛒 Häufig enthalten in:**\n{details['Lebensmittel']}")
         st.info(f"**ℹ️ Gut zu wissen:** {details['Tipp']}")
         
-        # NEU: DIE VERKNÜPFUNG MIT DEINEN TAGEBUCH-DATEN
         st.divider()
         st.subheader("🔍 Abgleich mit deinem Tagebuch")
         data = load_tracker_data(dm, user_name)
         
         if data is not None and not data.empty and details["Keywords"]:
-            # Filtere das Tagebuch nach Mahlzeiten, die die Keywords enthalten (Groß-/Kleinschreibung ignoriert)
             pattern = '|'.join(details["Keywords"])
             treffer = data[data['Mahlzeit'].str.contains(pattern, case=False, na=False)]
             
