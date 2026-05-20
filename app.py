@@ -50,18 +50,15 @@ with st.sidebar:
 
 # --- 7. SEITEN-LOGIK ---
 
-# --- SEITE 1: HOME (SCHÖNER GESTALTET) ---
+# --- SEITE 1: HOME---
 if page == "Home":
     st.markdown(f"<h1 style='text-align: center; color: #FF4B4B;'>Allergie-Tracker</h1>", unsafe_allow_html=True)
-    st.markdown(f"<h3 style='text-align: center;'>Hallo {user_name}, schön bist du da! 👋</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='text-align: center;'>Hallo {user_name.capitalize()}, schön bist du da! 👋</h3>", unsafe_allow_html=True)
     st.write("")
 
     # Daten vorab laden für Statistiken auf der Home-Seite
     data = load_tracker_data(dm, user_name)
     anzahl_eintraege = len(data) if data is not None else 0
-
-    st.write("")
-    st.markdown("####  Schnellauswahl – Was möchtest du tun?")
     
     # Interaktive Buttons mit Spalten-Layout
     col_btn1, col_btn2 = st.columns(2)
@@ -95,16 +92,17 @@ if page == "Home":
 
 # --- SEITE 2: MAHLZEIT TRACKEN ---
 elif page == "Mahlzeit tracken":
-    st.header("🍴 Neue Mahlzeit erfassen")
+    st.header(" Neue Mahlzeit erfassen")
     
     col_date, col_time = st.columns(2)
     with col_date:
         d_val = st.date_input("Datum", datetime.now())
     with col_time:
-        if 'selected_time' not in st.session_state:
-            st.session_state.selected_time = datetime.now().time()
-        t_val = st.time_input("Uhrzeit", value=st.session_state.selected_time)
-        st.session_state.selected_time = t_val
+        # Wir generieren die aktuelle Uhrzeit im Format HH:MM als Text-Vorschlag
+        aktuelle_uhrzeit = datetime.now().strftime('%H:%M')
+        
+        # Ein normales Textfeld zum Tippen statt ein Dropdown
+        t_val_string = st.text_input("Uhrzeit (HH:MM)", value=aktuelle_uhrzeit)
     
     m_val = st.text_input("Was hast du gegessen / getrunken?")
     symptome_ja_nein = st.radio("Traten Beschwerden / Symptome auf?", ["Nein", "Ja"], index=0)
@@ -125,7 +123,16 @@ elif page == "Mahlzeit tracken":
             "Augenjucken / Tränende Augen", "Kopfschmerzen / Migräne",
             "Schwindel / Kreislaufbeschwerden / Schwäche", "Müdigkeit (Extremer Leistungsknick)"
         ]
-        selected_symptom = st.selectbox("Welches Hauptsymptom ist aufgetreten?", symptom_liste)
+        
+        # Das st.selectbox von vorher wird zu st.multiselect:
+        selected_symptoms_list = st.multiselect("Welche Symptome sind aufgetreten? (Mehrfachauswahl möglich)", symptom_liste)
+        
+        # Die Liste wird für die CSV-Datei in einen Text-String umgewandelt:
+        if selected_symptoms_list:
+            selected_symptom_string = ", ".join(selected_symptoms_list)
+        else:
+            selected_symptom_string = "Ja (Keine spezifischen Details gewählt)"
+            
         intens = st.select_slider("Stärke der Reaktion (1 = kaum spürbar, 10 = extrem stark)", options=range(0, 11), value=3)
         bemerkung = st.text_area("Zusätzliche Notizen (z.B. Medikamente genommen?)")
     
@@ -137,7 +144,7 @@ elif page == "Mahlzeit tracken":
             if m_val:
                 save_to_csv(dm, {
                     "Nutzer": user_name, "Datum": d_val.strftime('%Y-%m-%d'),
-                    "Uhrzeit": t_val.strftime('%H:%M'), "Mahlzeit": m_val,
+                    "Uhrzeit": t_val_string, "Mahlzeit": m_val,
                     "Symptome": symptome_ja_nein, "Details": selected_symptom,
                     "Intensität": intens, "Bemerkungen": bemerkung
                 })
@@ -147,7 +154,7 @@ elif page == "Mahlzeit tracken":
                 st.error("Bitte gib ein, was du gegessen hast.")
                 
     with col_view:
-        if st.button(" Zur Übersicht springen", use_container_width=True):
+        if st.button(" Zur Übersicht", use_container_width=True):
             st.session_state.nav_index = 2
             st.rerun()
 
@@ -155,7 +162,7 @@ elif page == "Mahlzeit tracken":
 elif page == "Übersicht & Grafik":
     st.header(" Deine Analyse & Historie")
     
-    if st.button("🍴 Neuen Eintrag hinzufügen", use_container_width=True):
+    if st.button(" Neuen Eintrag hinzufügen", use_container_width=True):
         st.session_state.nav_index = 1
         st.rerun()
         
@@ -342,20 +349,36 @@ elif page == "Arzt-Modus":
             pdf.cell(15, 8, "Intens.", 1, 0, 'C', True)
             pdf.cell(60, 8, "Bemerkung", 1, 1, 'C', True)
 
+            # Zeilen befüllen mit "nan"-Schutz
             pdf.set_font("Arial", size=9)
             for _, row in data.iterrows():
-                datum_text = str(row.get('Datum', '')).encode('latin-1', 'replace').decode('latin-1')
-                mahlzeit_text = str(row.get('Mahlzeit', ''))[:22].encode('latin-1', 'replace').decode('latin-1')
-                details_text = str(row.get('Details', ''))[:22].encode('latin-1', 'replace').decode('latin-1')
-                intens_text = str(row.get('Intensität', '0'))
-                bemerkung_text = str(row.get('Bemerkungen', ''))[:30].encode('latin-1', 'replace').decode('latin-1')
+                # Werte auslesen
+                datum_val = row.get('Datum', '')
+                mahlzeit_val = row.get('Mahlzeit', '')
+                details_val = row.get('Details', '')
+                intens_val = row.get('Intensität', '0')
+                bemerkung_val = row.get('Bemerkungen', '')
 
+                # Schutz vor unschönen "nan" Werten (Leere Felder abfangen)
+                if pd.isna(bemerkung_val) or str(bemerkung_val).lower() == 'nan' or not str(bemerkung_val).strip():
+                    bemerkung_val = "-" # Zeigt einen sauberen Strich an, wenn nichts eingetragen wurde
+                
+                if pd.isna(details_val) or str(details_val).lower() == 'nan':
+                    details_val = "Keine Beschwerden"
+
+                # Sicheres String-Encoding für das PDF
+                datum_text = str(datum_val).encode('latin-1', 'replace').decode('latin-1')
+                mahlzeit_text = str(mahlzeit_val)[:22].encode('latin-1', 'replace').decode('latin-1')
+                details_text = str(details_val)[:40].encode('latin-1', 'replace').decode('latin-1')
+                intens_text = str(intens_val)
+                bemerkung_text = str(bemerkung_val)[:30].encode('latin-1', 'replace').decode('latin-1')
+
+                # Zellen ins PDF zeichnen
                 pdf.cell(25, 8, datum_text, 1)
                 pdf.cell(45, 8, mahlzeit_text, 1)
                 pdf.cell(45, 8, details_text, 1)
                 pdf.cell(15, 8, intens_text, 1, 0, 'C')
                 pdf.cell(60, 8, bemerkung_text, 1, 1)
-
             try:
                 pdf_output = pdf.output(dest='S').encode('latin-1')
             except AttributeError:
